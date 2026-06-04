@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% block title %}Contact Us – CineBook{% endblock %}
+
+{% block extra_css %}
+<style>
+.ct-hero{
+  background:linear-gradient(135deg,#0e1420 0%,#141c2e 50%,#0e1420 100%);
+  padding:72px 0 52px; text-align:center; position:relative; overflow:hidden;
+}
+.ct-hero::before{
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse at 50% 100%,rgba(229,56,59,.1) 0%,transparent 65%);
+}
+.ct-hero h1{font-size:2.7rem;font-weight:900;color:#fff;margin-bottom:10px;position:relative;}
+.ct-hero h1 span{color:#e5383b;}
+.ct-hero p{color:rgba(255,255,255,.55);font-size:1rem;max-width:480px;margin:0 auto;position:relative;}
+.ct-body{background:#070b14;padding:56px 0;min-height:55vh;}
+
+/* Info cards */
+.icard{
+  background:#0e1420; border:1.5px solid #1a2235; border-radius:14px;
+  padding:26px 20px; text-align:center; transition:all .3s; height:100%;
+}
+.icard:hover{border-color:#e5383b;transform:translateY(-4px);box-shadow:0 12px 30px rgba(229,56,59,.14);}
+.icard-ico{
+  width:56px;height:56px;background:rgba(229,56,59,.1);border:1.5px solid rgba(229,56,59,.3);
+  border-radius:12px;display:flex;align-items:center;justify-content:center;
+  margin:0 auto 14px;font-size:1.4rem;color:#e5383b;
+}
+.icard h5{color:#fff;font-size:.9rem;font-weight:700;margin-bottom:7px;}
+.icard p,.icard a{color:rgba(255,255,255,.48);font-size:.84rem;text-decoration:none;line-height:1.65;}
+.icard a:hover{color:#e5383b;}
+
+/* Profile card */
+.pcard{
+  background:#0e1420;border:1.5px solid #1a2235;border-radius:18px;padding:28px;
+}
+.pcard h3{
+  color:#fff;font-size:1.1rem;font-weight:800;margin-bottom:20px;padding-bottom:14px;
+  border-bottom:1px solid #1a2235;display:flex;align-items:center;gap:9px;
+}
+.pcard h3 i{color:#e5383b;}
+.pavatar{
+  width:68px;height:68px;background:linear-gradient(135deg,#e5383b,#c00);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:1.8rem;color:#fff;font-weight:700;margin-bottom:14px;
+}
+.pname{color:#fff;font-size:1.05rem;font-weight:700;margin-bottom:4px;}
+.pemail{color:rgba(255,255,255,.45);font-size:.82rem;margin-bottom:18px;}
+.prow{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid #1a2235;}
+.prow:last-child{border-bottom:none;}
+.prowico{width:34px;height:34px;background:#1a2235;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#e5383b;font-size:.85rem;flex-shrink:0;}
+.prlabel{color:rgba(255,255,255,.36);font-size:.72rem;font-weight:600;}
+.prval{color:#fff;font-size:.87rem;font-weight:500;}
+.no-login{text-align:center;padding:36px 18px;color:rgba(255,255,255,.38);}
+.no-login i{font-size:2.8rem;display:block;margin-bottom:14px;}
+.no-login p{margin-bottom:18px;font-size:.87rem;}
+.btn-login-go{
+  background:#e5383b;color:#fff;padding:9px 24px;border-radius:8px;
+  text-decoration:none;font-weight:700;font-size:.87rem;display:inline-block;transition:all .2s;
+}
+.btn-login-go:hover{background:#c00;color:#fff;transform:translateY(-2px);}
+
+/* Feedback */
+.fcard{background:#0e1420;border:1.5px solid #1a2235;border-radius:18px;padding:28px;}
+.fcard h3{color:#fff;font-size:1.1rem;font-weight:800;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #1a2235;display:flex;align-items:center;gap:9px;}
+.fcard h3 i{color:#e5383b;}
+.dlabel{color:rgba(255,255,255,.65);font-size:.82rem;font-weight:600;margin-bottom:7px;}
+.dinput{
+  background:#1a2235;border:1.5px solid #2a3550;border-radius:9px;
+  color:#fff;padding:11px 14px;width:100%;font-size:.88rem;
+  transition:border-color .2s;outline:none;
+}
+.dinput::placeholder{color:#4a5568;}
+.dinput:focus{border-color:#e5383b;box-shadow:0 0 0 3px rgba(229,56,59,.1);}
+.dtextarea{resize:vertical;min-height:115px;}
+.star-row{display:flex;gap:7px;}
+.sstar{background:none;border:none;font-size:1.55rem;color:#2a3550;cursor:pointer;transition:all .15s;padding:0;line-height:1;}
+.sstar:hover,.sstar.lit{color:#ffd60a;transform:scale(1.15);}
+.chips{display:flex;gap:7px;flex-wrap:wrap;}
+.chip{
+  background:#1a2235;border:1.5px solid #2a3550;color:rgba(255,255,255,.55);
+  padding:5px 13px;border-radius:20px;font-size:.76rem;font-weight:600;
+  cursor:pointer;transition:all .2s;user-select:none;
+}
+.chip:hover,.chip.on{background:rgba(229,56,59,.14);border-color:#e5383b;color:#e5383b;}
+.btn-send{
+  background:linear-gradient(135deg,#e5383b,#c00);color:#fff;border:none;
+  padding:13px 32px;border-radius:9px;font-weight:700;font-size:.92rem;
+  cursor:pointer;display:flex;align-items:center;gap:8px;
+  transition:all .25s;width:100%;justify-content:center;
+}
+.btn-send:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(229,56,59,.35);}
+.ok-box{
+  background:#071a0f;border:1.5px solid #15532e;border-radius:11px;
+  padding:20px;text-align:center;color:#4ade80;display:none;
+}
+.ok-box i{font-size:2rem;display:block;margin-bottom:9px;}
+
+/* FAQ */
+.faqcard{background:#0e1420;border:1.5px solid #1a2235;border-radius:18px;padding:28px;margin-top:20px;}
+.faqcard h3{color:#fff;font-size:1.1rem;font-weight:800;margin-bottom:20px;display:flex;align-items:center;gap:9px;}
+.faqcard h3 i{color:#e5383b;}
+.faqitem{border-bottom:1px solid #1a2235;padding:14px 0;}
+.faqitem:last-child{border-bottom:none;}
+.faqq{color:#fff;font-weight:600;font-size:.87rem;margin-bottom:7px;}
+.faqa{color:rgba(255,255,255,.45);font-size:.82rem;line-height:1.65;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ct-hero">
+  <div class="container">
+    <h1>Contact <span>&amp; Feedback</span></h1>
+    <p>We're always here to help. Reach out for support, share your experience, or just say hello.</p>
+  </div>
+</div>
+
+<div class="ct-body">
+  <div class="container">
+
+    <!-- Info cards -->
+    <div class="row g-3 mb-5">
+      <div class="col-6 col-md-3">
+        <div class="icard">
+          <div class="icard-ico"><i class="fas fa-phone"></i></div>
+          <h5>Phone</h5>
+          <p><a href="tel:18005990099">1800-599-0099</a><br>Mon–Sun · 9 AM–9 PM</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="icard">
+          <div class="icard-ico"><i class="fas fa-envelope"></i></div>
+          <h5>Email</h5>
+          <p><a href="mailto:support@cinebook.com">support@cinebook.com</a><br>Reply within 24 hrs</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="icard">
+          <div class="icard-ico"><i class="fab fa-whatsapp"></i></div>
+          <h5>WhatsApp</h5>
+          <p><a href="#">+91 98765 43210</a><br>Chat anytime</p>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="icard">
+          <div class="icard-ico"><i class="fas fa-map-marker-alt"></i></div>
+          <h5>Office</h5>
+          <p>Banjara Hills, Hyderabad<br>Telangana – 500 034</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+
+      <!-- LEFT: User profile + FAQ -->
+      <div class="col-lg-5">
+        <div class="pcard mb-4">
+          <h3><i class="fas fa-user-circle"></i> Your Account</h3>
+          {% if session.get('user_id') %}
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+            <div class="pavatar">{{ session.get('user_name','U')[0].upper() }}</div>
+            <div>
+              <div class="pname">{{ session.get('user_name','User') }}</div>
+              <div class="pemail">{{ session.get('user_email','') }}</div>
+            </div>
+          </div>
+          <div>
+            <div class="prow">
+              <div class="prowico"><i class="fas fa-user"></i></div>
+              <div><div class="prlabel">FULL NAME</div><div class="prval">{{ session.get('user_name','—') }}</div></div>
+            </div>
+            <div class="prow">
+              <div class="prowico"><i class="fas fa-id-badge"></i></div>
+              <div><div class="prlabel">ROLE</div><div class="prval" style="text-transform:capitalize;">{{ session.get('role','—') }}</div></div>
+            </div>
+            <div class="prow">
+              <div class="prowico"><i class="fas fa-shield-alt"></i></div>
+              <div><div class="prlabel">STATUS</div><div class="prval" style="color:#4ade80;"><i class="fas fa-circle" style="font-size:.45rem;margin-right:5px;vertical-align:middle;"></i>Active</div></div>
+            </div>
+          </div>
+          {% if session.get('role')=='user' %}
+          <div style="display:flex;gap:8px;margin-top:18px;">
+            <a href="{{ url_for('user.dashboard') }}" style="background:#1a2235;border:1.5px solid #2a3550;color:#fff;border-radius:8px;padding:8px 14px;flex:1;text-align:center;font-weight:600;font-size:.8rem;text-decoration:none;">
+              <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+            </a>
+            <a href="{{ url_for('user.my_bookings') }}" style="background:#e5383b;color:#fff;border-radius:8px;padding:8px 14px;flex:1;text-align:center;font-weight:600;font-size:.8rem;text-decoration:none;">
+              <i class="fas fa-ticket-alt me-1"></i>My Bookings
+            </a>
+          </div>
+          {% endif %}
+          {% else %}
+          <div class="no-login">
+            <i class="fas fa-user-lock"></i>
+            <p>Login to view your account details and booking history.</p>
+            <a href="#" onclick="openLoginModal();return false;" class="btn-login-go"><i class="fas fa-sign-in-alt me-2"></i>Login / Sign Up</a>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="faqcard">
+          <h3><i class="fas fa-question-circle"></i> FAQs</h3>
+          <div class="faqitem">
+            <div class="faqq">How do I cancel a booking?</div>
+            <div class="faqa">Go to My Bookings in your dashboard. Select the booking and click Cancel. Refunds are processed within 5–7 business days.</div>
+          </div>
+          <div class="faqitem">
+            <div class="faqq">Can I reschedule tickets?</div>
+            <div class="faqa">Rescheduling is not directly supported. Please cancel and rebook. Cancellations are free up to 2 hours before the show.</div>
+          </div>
+          <div class="faqitem">
+            <div class="faqq">How do I get my confirmation?</div>
+            <div class="faqa">Confirmation is shown immediately on-screen after booking. You can also view it in My Bookings at any time.</div>
+          </div>
+          <div class="faqitem">
+            <div class="faqq">Are there convenience fees?</div>
+            <div class="faqa">A small convenience fee is added per ticket at checkout. The exact amount is shown before you confirm payment.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Feedback form -->
+      <div class="col-lg-7">
+        <div class="fcard" style="position:relative;">
+          <h3><i class="fas fa-comment-dots"></i> Send Feedback</h3>
+
+          {% if not session.get('user_id') %}
+          <!-- Login required overlay -->
+          <div id="loginOverlay" style="position:absolute;inset:0;z-index:20;background:rgba(6,8,15,.92);backdrop-filter:blur(6px);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center;">
+            <div style="width:72px;height:72px;border-radius:50%;background:rgba(229,56,59,.15);border:2px solid rgba(229,56,59,.4);display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+              <i class="fas fa-lock" style="font-size:1.8rem;color:#e5383b;"></i>
+            </div>
+            <h4 style="color:#fff;font-weight:800;margin-bottom:10px;font-size:1.15rem;">Login Required</h4>
+            <p style="color:rgba(255,255,255,.58);font-size:.88rem;margin-bottom:24px;max-width:320px;">You must be logged in to send a message to our team. Please sign in to continue.</p>
+            <a href="#" onclick="openLoginModal();return false;" class="btn-login-go" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#e5383b,#c00);color:#fff;padding:13px 30px;border-radius:9px;font-weight:700;font-size:.9rem;text-decoration:none;box-shadow:0 6px 20px rgba(229,56,59,.35);transition:all .2s;">
+              <i class="fas fa-sign-in-alt"></i> Login / Sign Up
+            </a>
+            <p style="color:rgba(255,255,255,.3);font-size:.76rem;margin-top:16px;">Don&#39;t have an account? Click above to register for free.</p>
+          </div>
+          {% endif %}
+
+          <div class="ok-box mb-4" id="okBox">
+            <i class="fas fa-check-circle"></i>
+            <strong>Thank you for your feedback!</strong>
+            <p style="font-size:.82rem;margin:7px 0 0;color:#86efac;">Our team will review your message shortly.</p>
+          </div>
+          <form id="fbForm" novalidate>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <div class="dlabel">Your Name *</div>
+                <input type="text" class="dinput" id="fn" placeholder="Enter your name" value="{{ session.get('user_name','') }}" required>
+              </div>
+              <div class="col-sm-6">
+                <div class="dlabel">Email *</div>
+                <input type="email" class="dinput" id="fe" placeholder="you@example.com" value="{{ session.get('user_email','') }}" required>
+              </div>
+              <div class="col-12">
+                <div class="dlabel">Category</div>
+                <div class="chips">
+                  <span class="chip on" data-v="General">General</span>
+                  <span class="chip" data-v="Booking Issue">Booking Issue</span>
+                  <span class="chip" data-v="Payment">Payment</span>
+                  <span class="chip" data-v="App Bug">App Bug</span>
+                  <span class="chip" data-v="Suggestion">Suggestion</span>
+                  <span class="chip" data-v="Compliment">Compliment</span>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="dlabel">Rate Your Experience</div>
+                <div class="star-row" id="starRow">
+                  <button type="button" class="sstar" data-v="1">★</button>
+                  <button type="button" class="sstar" data-v="2">★</button>
+                  <button type="button" class="sstar" data-v="3">★</button>
+                  <button type="button" class="sstar" data-v="4">★</button>
+                  <button type="button" class="sstar" data-v="5">★</button>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="dlabel">Subject</div>
+                <input type="text" class="dinput" id="fs" placeholder="Brief subject line">
+              </div>
+              <div class="col-12">
+                <div class="dlabel">Message *</div>
+                <textarea class="dinput dtextarea" id="fm" placeholder="Tell us what's on your mind…" required></textarea>
+              </div>
+              <div class="col-12">
+                <button type="submit" class="btn-send"><i class="fas fa-paper-plane"></i> Send Feedback</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Social -->
+        <div style="margin-top:20px;background:#0e1420;border:1.5px solid #1a2235;border-radius:14px;padding:22px;">
+          <h6 style="color:#fff;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-size:.9rem;">
+            <i class="fas fa-share-alt" style="color:#e5383b;"></i> Follow Us
+          </h6>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="#" style="background:#1877f2;color:#fff;padding:8px 16px;border-radius:7px;text-decoration:none;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:7px;"><i class="fab fa-facebook-f"></i> Facebook</a>
+            <a href="#" style="background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);color:#fff;padding:8px 16px;border-radius:7px;text-decoration:none;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:7px;"><i class="fab fa-instagram"></i> Instagram</a>
+            <a href="#" style="background:#1da1f2;color:#fff;padding:8px 16px;border-radius:7px;text-decoration:none;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:7px;"><i class="fab fa-twitter"></i> Twitter</a>
+            <a href="#" style="background:#ff0000;color:#fff;padding:8px 16px;border-radius:7px;text-decoration:none;font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:7px;"><i class="fab fa-youtube"></i> YouTube</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selRating=0;
+const stars=document.querySelectorAll('.sstar');
+stars.forEach(s=>{
+  s.addEventListener('mouseover',()=>stars.forEach(x=>x.classList.toggle('lit',+x.dataset.v<=+s.dataset.v)));
+  s.addEventListener('mouseout',()=>stars.forEach(x=>x.classList.toggle('lit',+x.dataset.v<=selRating)));
+  s.addEventListener('click',()=>{selRating=+s.dataset.v; stars.forEach(x=>x.classList.toggle('lit',+x.dataset.v<=selRating));});
+});
+document.querySelectorAll('.chip').forEach(c=>{
+  c.addEventListener('click',()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');});
+});
+document.getElementById('fbForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  // Block submission if not logged in
+  if (document.getElementById('loginOverlay')) { openLoginModal(); return; }
+  const name    = document.getElementById('fn').value.trim();
+  const email   = document.getElementById('fe').value.trim();
+  const message = document.getElementById('fm').value.trim();
+  if(!name || !email || !message){
+    alert('Please fill in Name, Email and Message.'); return;
+  }
+  const category = document.querySelector('.chip.on')?.dataset.v || 'General';
+  const subject  = document.getElementById('fs').value.trim();
+  const btn = this.querySelector('.btn-send');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+  try {
+    const res = await fetch('/contact/submit', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, email, category, subject, message, rating: selRating || null })
+    });
+    const d = await res.json();
+    if(d.success){
+      this.style.display='none';
+      document.getElementById('okBox').style.display='block';
+    } else {
+      alert(d.message || 'Failed to send. Please try again.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Feedback';
+    }
+  } catch(err) {
+    alert('Network error. Please try again.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Feedback';
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,810 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Analytics – CineBook Admin{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ───── Analytics Layout – Light / White Theme ───── */
+.analytics-hero {
+  background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 60%, #ffeaea 100%);
+  border-radius: 16px;
+  padding: 28px 32px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  border: 1px solid rgba(229,56,59,.18);
+  box-shadow: 0 4px 24px rgba(229,56,59,.07);
+}
+.analytics-hero h4 { color: #1a1a2e; margin: 0; font-weight: 800; font-size: 1.35rem; }
+.analytics-hero p  { color: #6b7280; margin: 6px 0 0; font-size: .88rem; }
+.hero-badges { display: flex; gap: 10px; flex-wrap: wrap; }
+.hero-badge  {
+  background: rgba(229,56,59,.08); border: 1px solid rgba(229,56,59,.25);
+  color: #c0392b; font-size: .73rem; font-weight: 700; border-radius: 20px;
+  padding: 5px 14px; letter-spacing: .4px;
+}
+
+/* Section Headers */
+.section-head {
+  display: flex; align-items: center; gap: 12px;
+  margin: 32px 0 18px;
+}
+.section-head h5 {
+  color: #1a1a2e; font-weight: 800; font-size: 1.05rem; margin: 0;
+}
+.section-divider {
+  flex: 1; height: 1px; background: rgba(0,0,0,.08);
+}
+.section-pill {
+  background: rgba(229,56,59,.1); border: 1px solid rgba(229,56,59,.25);
+  color: #e5383b; font-size: .7rem; font-weight: 800; border-radius: 12px;
+  padding: 3px 10px;
+}
+
+/* Chart Cards – White */
+.chart-card {
+  background: #ffffff;
+  border: 1px solid #e8ecf0;
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin-bottom: 24px;
+  transition: box-shadow .2s, transform .15s;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+.chart-card:hover {
+  box-shadow: 0 8px 32px rgba(229,56,59,.1);
+  transform: translateY(-1px);
+}
+.chart-title {
+  color: #1a1a2e; font-weight: 700; font-size: .97rem; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 10px;
+}
+.chart-title i { color: #e5383b; }
+.chart-desc {
+  color: #9ca3af; font-size: .78rem; margin-bottom: 12px;
+}
+.chart-wrap { position: relative; width: 100%; }
+.chart-wrap canvas { max-width: 100%; }
+
+/* Axis label badges */
+.axis-labels {
+  display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.axis-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 8px; padding: 4px 10px; font-size: .73rem; color: #4b5563; font-weight: 600;
+}
+.axis-badge .ax-label {
+  color: #e5383b; font-weight: 800; font-size: .69rem;
+  background: rgba(229,56,59,.08); border-radius: 4px; padding: 1px 5px;
+}
+
+/* Loading skeleton */
+.chart-loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 220px; color: #d1d5db; flex-direction: column; gap: 12px;
+}
+.spinner-ring {
+  width: 36px; height: 36px; border: 3px solid rgba(229,56,59,.15);
+  border-top-color: #e5383b; border-radius: 50%; animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* KPI Mini Cards */
+.kpi-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+.kpi-mini {
+  flex: 1; min-width: 130px;
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 12px; padding: 16px 18px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.04);
+}
+.kpi-mini .kpi-val { font-size: 1.6rem; font-weight: 800; color: #1a1a2e; line-height: 1; }
+.kpi-mini .kpi-lbl { font-size: .72rem; color: #9ca3af; margin-top: 6px; }
+
+/* Filter Row */
+.filter-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.filter-row select, .filter-row button {
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  color: #374151; border-radius: 8px; padding: 7px 14px; font-size: .82rem;
+  cursor: pointer; transition: border-color .15s;
+}
+.filter-row select:focus { outline: none; border-color: #e5383b; }
+.filter-row button { background: #e5383b; border-color: #e5383b; color:#fff; font-weight: 700; }
+.filter-row button:hover { background: #c0392b; }
+
+/* No-data state */
+.no-data {
+  text-align: center; padding: 48px; color: #d1d5db;
+}
+.no-data i { font-size: 2.2rem; display: block; margin-bottom: 12px; opacity: .4; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero Banner -->
+<div class="analytics-hero">
+  <div>
+    <h4><i class="fas fa-chart-line me-2" style="color:#e5383b;"></i>Analytics Dashboard</h4>
+    <p>Deep insights across bookings, movies, theatres and screens. All charts are dynamic and load live data.</p>
+  </div>
+  <div class="hero-badges">
+    <span class="hero-badge"><i class="fas fa-clock me-1"></i>Live Data</span>
+    <span class="hero-badge"><i class="fas fa-database me-1"></i>11 Visualizations</span>
+    <span class="hero-badge"><i class="fas fa-sync-alt me-1"></i>Auto-refresh</span>
+  </div>
+</div>
+
+<!-- SECTION 1 : BOOKING TRENDS -->
+<div class="section-head">
+  <span class="section-pill">01</span>
+  <h5><i class="fas fa-ticket-alt me-2" style="color:#e5383b;"></i>Booking Trends</h5>
+  <div class="section-divider"></div>
+</div>
+
+<div class="row g-4">
+  <!-- Chart 1 – Total Shows per Day -->
+  <div class="col-12">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-chart-line"></i> Total Shows per Day – Trend Over Time</div>
+      <div class="chart-desc">Line chart showing daily show activity. Upward trend indicates growing platform engagement.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> Date (Day / Week)</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Number of Shows</div>
+      </div>
+      <div class="filter-row">
+        <select id="trendRange">
+          <option value="30">Last 30 days</option>
+          <option value="60">Last 60 days</option>
+          <option value="90" selected>Last 90 days</option>
+        </select>
+        <select id="trendGroup">
+          <option value="day" selected>Daily</option>
+          <option value="week">Weekly</option>
+        </select>
+      </div>
+      <div class="chart-wrap" style="height:260px;">
+        <div class="chart-loading" id="load1"><div class="spinner-ring"></div><span>Loading data…</span></div>
+        <canvas id="chart1" style="display:none;height:260px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 2 – Total Shows by City -->
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-city"></i> Total Shows by City</div>
+      <div class="chart-desc">Vertical bar chart comparing show volume across cities.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> City Name</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Total Shows Count</div>
+      </div>
+      <div class="chart-wrap" style="height:260px;">
+        <div class="chart-loading" id="load2"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart2" style="display:none;height:260px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 3 – Peak Booking Periods -->
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-fire"></i> Peak Booking Periods</div>
+      <div class="chart-desc">Column chart for monthly peaks. Toggle to see weekday distribution.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> Month / Weekday</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Number of Shows</div>
+      </div>
+      <div class="filter-row">
+        <select id="peakToggle">
+          <option value="month">By Month</option>
+          <option value="weekday">By Weekday</option>
+        </select>
+      </div>
+      <div class="chart-wrap" style="height:230px;">
+        <div class="chart-loading" id="load3"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart3" style="display:none;height:230px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 4 – Booking Volume by Time Slot -->
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-clock"></i> Booking Volume by Time Slot</div>
+      <div class="chart-desc">Shows distributed across Morning, Afternoon, Evening, and Night slots.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> Time Slot</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Number of Shows</div>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <div class="chart-loading" id="load4"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart4" style="display:none;height:240px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2 : MOVIE PERFORMANCE -->
+<div class="section-head">
+  <span class="section-pill">02</span>
+  <h5><i class="fas fa-film me-2" style="color:#e5383b;"></i>Movie Performance</h5>
+  <div class="section-divider"></div>
+</div>
+
+<div class="row g-4">
+  <!-- Chart 5 – Top 10 Movies -->
+  <div class="col-lg-7">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-trophy"></i> Top 10 Movies by Total Shows</div>
+      <div class="chart-desc">Horizontal ranked bar chart of highest-performing movies.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> Number of Shows</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Movie Title</div>
+      </div>
+      <div class="chart-wrap" style="height:320px;">
+        <div class="chart-loading" id="load5"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart5" style="display:none;height:320px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 6 – Genre Performance -->
+  <div class="col-lg-5">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-theater-masks"></i> Genre Performance</div>
+      <div class="chart-desc">Compare genres by shows or revenue. Toggle chart style.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> Genre</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Shows / Revenue (₹)</div>
+      </div>
+      <div class="filter-row">
+        <select id="genreMetric">
+          <option value="shows">By Shows</option>
+          <option value="revenue">By Revenue</option>
+        </select>
+        <select id="genreType">
+          <option value="pie">Pie Chart</option>
+          <option value="bar">Bar Chart</option>
+        </select>
+      </div>
+      <div class="chart-wrap" style="height:280px;">
+        <div class="chart-loading" id="load6"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart6" style="display:none;height:280px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 7 – Movie Trends Over Time -->
+  <div class="col-12">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-chart-area"></i> Movie Booking Trends Over Time (Top 5)</div>
+      <div class="chart-desc">Multi-line chart tracking monthly show counts for the top 5 movies.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> Year-Month (YYYY-MM)</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Number of Shows</div>
+      </div>
+      <div class="chart-wrap" style="height:280px;">
+        <div class="chart-loading" id="load7"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart7" style="display:none;height:280px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 8 – Ratings vs Bookings Scatter -->
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-star"></i> Movie Ratings vs Show Count</div>
+      <div class="chart-desc">Scatter plot: does higher rating mean more shows? Each dot represents one movie.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> Movie Rating (0–10)</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Show Count</div>
+      </div>
+      <div class="chart-wrap" style="height:260px;">
+        <div class="chart-loading" id="load8"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart8" style="display:none;height:260px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3 : THEATRE ANALYSIS -->
+<div class="section-head">
+  <span class="section-pill">03</span>
+  <h5><i class="fas fa-building me-2" style="color:#e5383b;"></i>Theatre Analysis</h5>
+  <div class="section-divider"></div>
+</div>
+
+<div class="row g-4">
+  <!-- Chart 9 – Top Theatres -->
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-medal"></i> Top Theatres by Show Count</div>
+      <div class="chart-desc">Ranked horizontal bar chart of top 10 performing theatres.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> Number of Shows</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Theatre Name</div>
+      </div>
+      <div class="chart-wrap" style="height:300px;">
+        <div class="chart-loading" id="load9"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart9" style="display:none;height:300px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 10 – Theatre by City -->
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-map-marked-alt"></i> Theatre Performance Across Cities</div>
+      <div class="chart-desc">Grouped bar chart comparing top theatres within each city.</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> City Name</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis</span> Number of Shows</div>
+      </div>
+      <div class="chart-wrap" style="height:300px;">
+        <div class="chart-loading" id="load10"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart10" style="display:none;height:300px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 12 – Screen Type Performance -->
+  <div class="col-lg-6">
+    <div class="chart-card">
+      <div class="chart-title"><i class="fas fa-desktop"></i> Booking by Screen Type / Number</div>
+      <div class="chart-desc">Clustered bar comparing shows and revenue across screen numbers (proxy for screen tier).</div>
+      <div class="axis-labels">
+        <div class="axis-badge"><span class="ax-label">X-Axis</span> Screen Number / Type</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis (Left)</span> Shows Count</div>
+        <div class="axis-badge"><span class="ax-label">Y-Axis (Right)</span> Revenue (₹)</div>
+      </div>
+      <div class="chart-wrap" style="height:270px;">
+        <div class="chart-loading" id="load12"><div class="spinner-ring"></div><span>Loading…</span></div>
+        <canvas id="chart12" style="display:none;height:270px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+/* Global Chart.js defaults – Light Theme */
+Chart.defaults.color = '#6b7280';
+Chart.defaults.borderColor = 'rgba(0,0,0,0.07)';
+Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
+
+const COLORS = [
+  '#e5383b','#3b82f6','#10b981','#f59e0b','#8b5cf6',
+  '#f97316','#06b6d4','#ec4899','#6366f1','#84cc16',
+  '#ef4444','#14b8a6'
+];
+const RED   = '#e5383b';
+const BLUE  = '#3b82f6';
+const GREEN = '#10b981';
+
+/* Shared scale helpers */
+const lightX = (titleText) => ({
+  grid: { color: 'rgba(0,0,0,0.05)' },
+  ticks: { color: '#6b7280' },
+  title: { display: true, text: titleText, color: '#9ca3af', font: { size: 11 } }
+});
+const lightY = (titleText) => ({
+  grid: { color: 'rgba(0,0,0,0.05)' },
+  ticks: { color: '#6b7280' },
+  beginAtZero: true,
+  title: { display: true, text: titleText, color: '#9ca3af', font: { size: 11 } }
+});
+const lightYnoGrid = (titleText) => ({
+  grid: { display: false },
+  ticks: { color: '#6b7280', font: { size: 11 } },
+  title: { display: true, text: titleText, color: '#9ca3af', font: { size: 11 } }
+});
+
+function hide(loadId, canvasId) {
+  document.getElementById(loadId).style.display = 'none';
+  const c = document.getElementById(canvasId);
+  c.style.display = 'block';
+  return c;
+}
+
+function showError(loadId) {
+  const el = document.getElementById(loadId);
+  el.innerHTML = '<i class="fas fa-exclamation-circle" style="font-size:1.8rem;color:#e5383b;opacity:.5;"></i><span style="font-size:.8rem;color:#9ca3af;">No data available</span>';
+}
+
+const charts = {};
+
+/* Chart 1: Daily Trend Line */
+let trendData = [];
+async function loadChart1() {
+  document.getElementById('load1').style.display = 'flex';
+  document.getElementById('chart1').style.display = 'none';
+  if (charts.c1) { charts.c1.destroy(); }
+  try {
+    const res = await fetch('/admin/api/analytics/bookings-trend');
+    trendData = await res.json();
+    if (!trendData.length) { showError('load1'); return; }
+
+    const range = parseInt(document.getElementById('trendRange').value);
+    const group = document.getElementById('trendGroup').value;
+    let subset  = trendData.slice(-range);
+
+    let labels, values;
+    if (group === 'week') {
+      const weekly = {};
+      subset.forEach(d => {
+        const dt = new Date(d.day);
+        const wk = `W${Math.ceil(dt.getDate()/7)} ${dt.toLocaleString('default',{month:'short'})}`;
+        weekly[wk] = (weekly[wk] || 0) + d.cnt;
+      });
+      labels = Object.keys(weekly);
+      values = Object.values(weekly);
+    } else {
+      labels = subset.map(d => d.day);
+      values = subset.map(d => d.cnt);
+    }
+
+    const ctx = hide('load1','chart1').getContext('2d');
+    const grad = ctx.createLinearGradient(0,0,0,240);
+    grad.addColorStop(0,'rgba(229,56,59,0.15)');
+    grad.addColorStop(1,'rgba(229,56,59,0)');
+
+    charts.c1 = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Shows', data: values,
+          borderColor: RED, backgroundColor: grad,
+          borderWidth: 2.5, pointRadius: labels.length > 40 ? 0 : 3,
+          pointHoverRadius: 5, fill: true, tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+        scales: {
+          x: { ...lightX(group === 'week' ? 'Week' : 'Date'), ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 12, color: '#6b7280' } },
+          y: lightY('Number of Shows')
+        }
+      }
+    });
+  } catch(e) { showError('load1'); }
+}
+document.getElementById('trendRange').addEventListener('change', loadChart1);
+document.getElementById('trendGroup').addEventListener('change', loadChart1);
+
+/* Chart 2: Bookings by City */
+async function loadChart2() {
+  try {
+    const res = await fetch('/admin/api/analytics/bookings-by-city');
+    const data = await res.json();
+    if (!data.length) { showError('load2'); return; }
+    const ctx = hide('load2','chart2').getContext('2d');
+    charts.c2 = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.city),
+        datasets: [{ label: 'Shows', data: data.map(d => d.cnt),
+          backgroundColor: COLORS, borderRadius: 6, borderSkipped: false }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ...lightX('City Name'), grid: { display: false } },
+          y: lightY('Total Shows Count')
+        }
+      }
+    });
+  } catch(e) { showError('load2'); }
+}
+
+/* Chart 3: Peak Periods */
+let peakCache = null;
+async function loadChart3() {
+  if (!peakCache) {
+    try {
+      const res = await fetch('/admin/api/analytics/peak-periods');
+      peakCache = await res.json();
+    } catch(e) { showError('load3'); return; }
+  }
+  if (charts.c3) { charts.c3.destroy(); }
+  const type = document.getElementById('peakToggle').value;
+  const raw = type === 'month' ? peakCache.months : peakCache.days;
+  if (!raw || !raw.length) { showError('load3'); return; }
+  const ctx = hide('load3','chart3').getContext('2d');
+  charts.c3 = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: raw.map(d => d.label),
+      datasets: [{ label: type === 'month' ? 'Shows per Month' : 'Shows per Weekday',
+        data: raw.map(d => d.cnt),
+        backgroundColor: raw.map((_,i) => COLORS[i % COLORS.length]),
+        borderRadius: 6, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ...lightX(type === 'month' ? 'Month' : 'Weekday'), grid: { display: false } },
+        y: lightY('Number of Shows')
+      }
+    }
+  });
+}
+document.getElementById('peakToggle').addEventListener('change', loadChart3);
+
+/* Chart 4: Time Slots */
+async function loadChart4() {
+  try {
+    const res = await fetch('/admin/api/analytics/time-slots');
+    const data = await res.json();
+    if (!data.length) { showError('load4'); return; }
+    const slotColors = { Morning:'#f59e0b', Afternoon:'#f97316', Evening:'#8b5cf6', Night:'#3b82f6' };
+    const ctx = hide('load4','chart4').getContext('2d');
+    charts.c4 = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.slot),
+        datasets: [{ label: 'Shows', data: data.map(d => d.cnt),
+          backgroundColor: data.map(d => slotColors[d.slot] || RED),
+          borderRadius: 8, borderSkipped: false }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ...lightX('Time Slot'), grid: { display: false } },
+          y: lightY('Number of Shows')
+        }
+      }
+    });
+  } catch(e) { showError('load4'); }
+}
+
+/* Chart 5: Top 10 Movies Horizontal Bar */
+async function loadChart5() {
+  try {
+    const res = await fetch('/admin/api/analytics/top-movies');
+    const data = await res.json();
+    if (!data.length) { showError('load5'); return; }
+    const ctx = hide('load5','chart5').getContext('2d');
+    charts.c5 = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.title.length > 28 ? d.title.slice(0,25)+'…' : d.title),
+        datasets: [{ label: 'Shows', data: data.map(d => d.cnt),
+          backgroundColor: data.map((_,i) => COLORS[i % COLORS.length]),
+          borderRadius: 5 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ...lightX('Number of Shows'), beginAtZero: true },
+          y: lightYnoGrid('Movie Title')
+        }
+      }
+    });
+  } catch(e) { showError('load5'); }
+}
+
+/* Chart 6: Genre Performance (Pie / Bar) */
+let genreCache = null;
+async function loadChart6() {
+  if (!genreCache) {
+    try {
+      const res = await fetch('/admin/api/analytics/genre-performance');
+      genreCache = await res.json();
+    } catch(e) { showError('load6'); return; }
+  }
+  if (charts.c6) { charts.c6.destroy(); }
+  if (!genreCache.length) { showError('load6'); return; }
+  const metric = document.getElementById('genreMetric').value;
+  const type   = document.getElementById('genreType').value;
+  const values = genreCache.map(d => metric === 'revenue' ? d.revenue : d.shows);
+  const ctx    = hide('load6','chart6').getContext('2d');
+  charts.c6 = new Chart(ctx, {
+    type: type === 'pie' ? 'doughnut' : 'bar',
+    data: {
+      labels: genreCache.map(d => d.genre),
+      datasets: [{ label: metric === 'revenue' ? 'Revenue (₹)' : 'Shows',
+        data: values,
+        backgroundColor: COLORS,
+        borderWidth: type === 'pie' ? 2 : 0,
+        borderColor: '#ffffff',
+        borderRadius: type !== 'pie' ? 5 : undefined }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: type === 'pie' ? 'bottom' : 'top',
+          labels: { boxWidth: 12, font: { size: 11 }, color: '#6b7280' } }
+      },
+      scales: type !== 'pie' ? {
+        x: { ...lightX('Genre'), grid: { display: false } },
+        y: lightY(metric === 'revenue' ? 'Revenue (₹)' : 'Number of Shows')
+      } : {}
+    }
+  });
+}
+document.getElementById('genreMetric').addEventListener('change', loadChart6);
+document.getElementById('genreType').addEventListener('change', loadChart6);
+
+/* Chart 7: Movie Trends Multi-line */
+async function loadChart7() {
+  try {
+    const res = await fetch('/admin/api/analytics/movie-trends');
+    const data = await res.json();
+    const titles = Object.keys(data);
+    if (!titles.length) { showError('load7'); return; }
+    const allMonths = [...new Set(titles.flatMap(t => data[t].map(d => d.ym)))].sort();
+    const datasets = titles.map((title, i) => {
+      const monthMap = {};
+      data[title].forEach(d => { monthMap[d.ym] = d.cnt; });
+      return {
+        label: title.length > 22 ? title.slice(0,20)+'…' : title,
+        data: allMonths.map(m => monthMap[m] || 0),
+        borderColor: COLORS[i], backgroundColor: 'transparent',
+        borderWidth: 2.5, pointRadius: 3, tension: 0.4
+      };
+    });
+    const ctx = hide('load7','chart7').getContext('2d');
+    charts.c7 = new Chart(ctx, {
+      type: 'line',
+      data: { labels: allMonths, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 }, color: '#6b7280' } } },
+        scales: {
+          x: lightX('Year-Month (YYYY-MM)'),
+          y: lightY('Number of Shows')
+        }
+      }
+    });
+  } catch(e) { showError('load7'); }
+}
+
+/* Chart 8: Ratings vs Bookings Scatter */
+async function loadChart8() {
+  try {
+    const res = await fetch('/admin/api/analytics/ratings-bookings');
+    const data = await res.json();
+    if (!data.length) { showError('load8'); return; }
+    const ctx = hide('load8','chart8').getContext('2d');
+    charts.c8 = new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Movies', data: data.map(d => ({ x: d.rating, y: d.shows })),
+          backgroundColor: 'rgba(229,56,59,0.6)', pointRadius: 7,
+          pointHoverRadius: 10
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            label: ctx => {
+              const movie = data[ctx.dataIndex];
+              return `${movie.title}: Rating ${movie.rating}, Shows ${movie.shows}`;
+            }
+          }}
+        },
+        scales: {
+          x: { ...lightX('Movie Rating (0–10)'), min: 0, max: 10 },
+          y: lightY('Show Count')
+        }
+      }
+    });
+  } catch(e) { showError('load8'); }
+}
+
+/* Chart 9: Top Theatres Horizontal Bar */
+async function loadChart9() {
+  try {
+    const res = await fetch('/admin/api/analytics/top-theatres');
+    const data = await res.json();
+    if (!data.length) { showError('load9'); return; }
+    const ctx = hide('load9','chart9').getContext('2d');
+    charts.c9 = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.name.length > 22 ? d.name.slice(0,20)+'…' : d.name),
+        datasets: [{ label: 'Shows', data: data.map(d => d.cnt),
+          backgroundColor: data.map((_,i) => COLORS[i % COLORS.length]),
+          borderRadius: 5 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ...lightX('Number of Shows'), beginAtZero: true },
+          y: lightYnoGrid('Theatre Name')
+        }
+      }
+    });
+  } catch(e) { showError('load9'); }
+}
+
+/* Chart 10: Theatre by City Grouped Bar */
+async function loadChart10() {
+  try {
+    const res = await fetch('/admin/api/analytics/theatre-by-city');
+    const data = await res.json();
+    if (!data.length) { showError('load10'); return; }
+    const maxTheatres = Math.max(...data.map(c => c.theatres.length));
+    const datasets = [];
+    for (let i = 0; i < Math.min(maxTheatres, 4); i++) {
+      datasets.push({
+        label: `Theatre ${i+1}`,
+        data: data.map(c => c.theatres[i]?.shows || 0),
+        backgroundColor: COLORS[i], borderRadius: 4
+      });
+    }
+    const ctx = hide('load10','chart10').getContext('2d');
+    charts.c10 = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: data.map(d => d.city), datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 }, color: '#6b7280' } } },
+        scales: {
+          x: { ...lightX('City Name'), grid: { display: false } },
+          y: lightY('Number of Shows')
+        }
+      }
+    });
+  } catch(e) { showError('load10'); }
+}
+
+/* Chart 12: Screen Type Clustered Bar */
+async function loadChart12() {
+  try {
+    const res = await fetch('/admin/api/analytics/screen-type');
+    const data = await res.json();
+    if (!data.length) { showError('load12'); return; }
+    const ctx = hide('load12','chart12').getContext('2d');
+    charts.c12 = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.screen),
+        datasets: [
+          { label: 'Shows', data: data.map(d => d.shows), backgroundColor: BLUE, borderRadius: 5, yAxisID: 'y' },
+          { label: 'Revenue (₹)', data: data.map(d => d.revenue), backgroundColor: GREEN, borderRadius: 5, yAxisID: 'y2' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 }, color: '#6b7280' } } },
+        scales: {
+          x: { ...lightX('Screen Number / Type'), grid: { display: false } },
+          y:  { position: 'left', grid: { color: 'rgba(0,0,0,0.05)' }, beginAtZero: true, ticks: { color: '#6b7280' }, title: { display: true, text: 'Shows Count', color: BLUE, font: { size: 11 } } },
+          y2: { position: 'right', grid: { display: false }, beginAtZero: true, ticks: { color: '#6b7280' }, title: { display: true, text: 'Revenue (₹)', color: GREEN, font: { size: 11 } } }
+        }
+      }
+    });
+  } catch(e) { showError('load12'); }
+}
+
+/* Kick off all charts (Chart 11 – Seat Occupancy removed) */
+Promise.all([
+  loadChart1(), loadChart2(), loadChart3(), loadChart4(),
+  loadChart5(), loadChart6(), loadChart7(), loadChart8(),
+  loadChart9(), loadChart10(), loadChart12()
+]);
+</script>
+{% endblock %}

@@ -1,0 +1,275 @@
+{% extends "theatre_owner/base_owner.html" %}
+{% block title %}Owner Dashboard – CineBook{% endblock %}
+{% block page_title %}My Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Revenue card uses the existing orange theme from style.css */
+
+/* ── Analytics mini-cards ── */
+.mini-analytics { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+.mak {
+  flex: 1; min-width: 120px;
+  background: #14202e; border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px; padding: 14px 16px;
+}
+.mak-val { font-size: 1.5rem; font-weight: 800; color: #fff; line-height: 1; }
+.mak-lbl { font-size: .7rem; color: rgba(255,255,255,.4); margin-top: 5px; }
+
+/* ── Insight chart card ── */
+.insight-card {
+  background: #14202e; border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;
+}
+.insight-title {
+  color: #fff; font-weight: 700; font-size: .9rem; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+.insight-title i { color: #e5383b; }
+.insight-desc { color: rgba(255,255,255,.35); font-size: .73rem; margin-bottom: 14px; }
+.chart-wrap-sm { position: relative; width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Welcome Banner -->
+<div class="welcome-banner mb-4">
+  <div class="welcome-text">
+    <h5 class="mb-1">Welcome back, <strong>{{ session.get('user_name', 'Owner') }}</strong> 👋</h5>
+    <p class="mb-0 text-muted small">Manage your theatres and shows from here.</p>
+  </div>
+  <div class="welcome-date small text-muted">
+    <i class="fas fa-calendar-alt me-1"></i>
+    <span id="currentDate"></span>
+  </div>
+</div>
+
+<!-- KPI Cards – 4 cards now including Revenue -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="stat-card stat-card-red" onclick="window.location='{{ url_for('theatre_owner.my_theatres') }}'" style="cursor:pointer">
+      <div class="stat-top-row">
+        <div class="stat-icon-wrap stat-icon-red"><i class="fas fa-building"></i></div>
+        <span class="stat-badge stat-badge-red">Theatres</span>
+      </div>
+      <div class="stat-number">{{ stats.total_theatres }}</div>
+      <div class="stat-label">My Theatres</div>
+      <a href="{{ url_for('theatre_owner.my_theatres') }}" class="stat-link stat-link-red">
+        <i class="fas fa-arrow-right me-1"></i>Click to manage
+      </a>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="stat-card stat-card-blue" onclick="window.location='{{ url_for('theatre_owner.my_shows') }}'" style="cursor:pointer">
+      <div class="stat-top-row">
+        <div class="stat-icon-wrap stat-icon-blue"><i class="fas fa-calendar-alt"></i></div>
+        <span class="stat-badge stat-badge-blue">Shows</span>
+      </div>
+      <div class="stat-number">{{ stats.total_shows }}</div>
+      <div class="stat-label">Total Shows</div>
+      <a href="{{ url_for('theatre_owner.my_shows') }}" class="stat-link stat-link-blue">
+        <i class="fas fa-arrow-right me-1"></i>Click to manage
+      </a>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="stat-card stat-card-green">
+      <div class="stat-top-row">
+        <div class="stat-icon-wrap stat-icon-green"><i class="fas fa-ticket-alt"></i></div>
+        <span class="stat-badge stat-badge-green">Bookings</span>
+      </div>
+      <div class="stat-number">{{ stats.total_bookings }}</div>
+      <div class="stat-label">Total Bookings</div>
+      <span class="stat-link stat-link-green"><i class="fas fa-check-circle me-1"></i>All time confirmed</span>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="stat-card stat-card-orange">
+      <div class="stat-top-row">
+        <div class="stat-icon-wrap stat-icon-orange"><i class="fas fa-rupee-sign"></i></div>
+        <span class="stat-badge stat-badge-orange">Revenue</span>
+      </div>
+      <div class="stat-number" id="revenueDisplay">
+        {% if stats.total_revenue >= 100000 %}
+          ₹{{ "%.1f"|format(stats.total_revenue / 100000) }}L
+        {% elif stats.total_revenue >= 1000 %}
+          ₹{{ "%.1f"|format(stats.total_revenue / 1000) }}K
+        {% else %}
+          ₹{{ stats.total_revenue | int }}
+        {% endif %}
+      </div>
+      <div class="stat-label">Total Revenue</div>
+      <span class="stat-link stat-link-orange"><i class="fas fa-chart-line me-1"></i>From confirmed bookings</span>
+    </div>
+  </div>
+</div>
+
+<!-- Analytics + Recent Shows -->
+<div class="row g-4">
+
+  <!-- LEFT: Performance Analytics -->
+  <div class="col-lg-6">
+    <div class="pcard h-100">
+      <div class="pcard-head">
+        <span><i class="fas fa-chart-bar text-danger me-2"></i>Performance Analytics</span>
+      </div>
+      <div class="pcard-body" style="padding: 18px;">
+
+        <!-- Bookings by Theatre mini chart -->
+        <div class="insight-card">
+          <div class="insight-title"><i class="fas fa-chart-bar"></i> Bookings by Theatre</div>
+          <div class="insight-desc">Show count per theatre under your management.</div>
+          <div class="chart-wrap-sm" style="height:180px;">
+            <canvas id="theatreBookingsChart" style="height:180px;"></canvas>
+          </div>
+        </div>
+
+        <!-- Show time distribution -->
+        <div class="insight-card mb-0">
+          <div class="insight-title"><i class="fas fa-clock"></i> Show Time Distribution</div>
+          <div class="insight-desc">How your shows are spread across time slots.</div>
+          <div class="chart-wrap-sm" style="height:160px;">
+            <canvas id="timeSlotChart" style="height:160px;"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Recent Shows -->
+  <div class="col-lg-6">
+    <div class="pcard h-100">
+      <div class="pcard-head">
+        <span><i class="fas fa-calendar-alt text-danger me-2"></i>Recent Shows</span>
+        <a href="{{ url_for('theatre_owner.my_shows') }}" class="btn-panel btn-panel-red">View All</a>
+      </div>
+      <div class="pcard-body p-0">
+        <table class="ptable">
+          <thead><tr><th>Movie</th><th>Theatre</th><th>Date</th><th>Time</th><th>Seats</th></tr></thead>
+          <tbody>
+            {% for s in top_shows %}
+            <tr>
+              <td class="fw-semibold small">{{ s.movie_title[:20] }}{% if s.movie_title|length>20 %}…{% endif %}</td>
+              <td class="small text-muted">{{ s.theatre_name[:15] }}</td>
+              <td class="small">{{ s.show_date }}</td>
+              <td><span class="bdg bdg-yellow">{{ s.start_time }}</span></td>
+              <td>{{ s.available_seats or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center py-4 text-muted">No shows found</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+  /* Date display */
+  const d = new Date();
+  document.getElementById('currentDate').textContent = d.toLocaleDateString('en-IN', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  /* Count-up animation for integer stat cards */
+  document.querySelectorAll('.stat-number').forEach(el => {
+    const raw = el.textContent.trim();
+    // Skip revenue display (has ₹ symbol)
+    if (raw.startsWith('₹')) return;
+    const target = parseInt(raw);
+    if (isNaN(target)) return;
+    let current = 0;
+    const step = Math.max(1, Math.ceil(target / 30));
+    const timer = setInterval(() => {
+      current = Math.min(current + step, target);
+      el.textContent = current;
+      if (current >= target) clearInterval(timer);
+    }, 40);
+  });
+
+  /* ── Build charts from template data ── */
+  const theatreData = [
+    {% for t in theatres %}
+    { name: "{{ t.name[:18] }}", shows: {{ t.show_count }} },
+    {% endfor %}
+  ];
+
+  const showTimes = [
+    {% for s in top_shows %}
+    "{{ s.start_time }}",
+    {% endfor %}
+  ];
+
+  /* Chart 1 – Bookings by Theatre (horizontal bar) */
+  const COLORS = ['#e5383b','#3b82f6','#10b981','#f59e0b','#8b5cf6','#f97316','#06b6d4'];
+  const ctx1 = document.getElementById('theatreBookingsChart').getContext('2d');
+  if (theatreData.length > 0) {
+    new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: theatreData.map(t => t.name),
+        datasets: [{
+          label: 'Shows',
+          data: theatreData.map(t => t.shows),
+          backgroundColor: theatreData.map((_, i) => COLORS[i % COLORS.length]),
+          borderRadius: 5
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,.45)' }, beginAtZero: true, title: { display: true, text: 'No. of Shows', color: 'rgba(255,255,255,.35)', font: { size: 10 } } },
+          y: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,.55)', font: { size: 11 } } }
+        }
+      }
+    });
+  } else {
+    ctx1.canvas.parentElement.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.25);font-size:.82rem;"><i class="fas fa-chart-bar" style="font-size:1.5rem;display:block;margin-bottom:8px;opacity:.3;"></i>No theatre data yet</div>';
+  }
+
+  /* Chart 2 – Time Slot Distribution (doughnut) */
+  const slotMap = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
+  showTimes.forEach(t => {
+    if (!t) return;
+    const hr = parseInt(t.split(':')[0]);
+    if (hr >= 5 && hr < 12) slotMap.Morning++;
+    else if (hr >= 12 && hr < 17) slotMap.Afternoon++;
+    else if (hr >= 17 && hr < 21) slotMap.Evening++;
+    else slotMap.Night++;
+  });
+
+  const ctx2 = document.getElementById('timeSlotChart').getContext('2d');
+  const slotVals = Object.values(slotMap);
+  if (slotVals.some(v => v > 0)) {
+    new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: ['Morning', 'Afternoon', 'Evening', 'Night'],
+        datasets: [{
+          data: slotVals,
+          backgroundColor: ['#f59e0b','#f97316','#8b5cf6','#3b82f6'],
+          borderWidth: 2, borderColor: '#14202e'
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { color: 'rgba(255,255,255,.55)', font: { size: 11 }, boxWidth: 12 } }
+        }
+      }
+    });
+  } else {
+    ctx2.canvas.parentElement.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.25);font-size:.82rem;"><i class="fas fa-clock" style="font-size:1.5rem;display:block;margin-bottom:8px;opacity:.3;"></i>No show time data yet</div>';
+  }
+</script>
+{% endblock %}

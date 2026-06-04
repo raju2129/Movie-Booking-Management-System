@@ -1,0 +1,140 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Theatres – Admin{% endblock %}
+{% block page_title %}Theatres{% endblock %}
+{% block content %}
+
+<div class="ph">
+  <div>
+    <h4>Theatres</h4>
+    <p>{{ total }} theatres in the system</p>
+  </div>
+  <button class="btn btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#addTheatreModal">
+    <i class="fas fa-plus me-2"></i>Add Theatre
+  </button>
+</div>
+
+<div class="pcard">
+  <div class="pcard-head">
+    <span>Theatre Directory</span>
+    <div class="d-flex gap-2">
+      <select class="form-select form-select-sm" style="width:180px" onchange="location.href='?city='+this.value">
+        <option value="">All Cities</option>
+        {% for c in cities %}<option value="{{ c }}" {% if c==city_filter %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="ptable">
+      <thead>
+        <tr><th>Name</th><th>City</th><th>State</th><th>Location</th><th>Screens</th><th>Shows</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for t in theatres %}
+        <tr>
+          <td class="fw-semibold">{{ t.name }}</td>
+          <td><span class="bdg bdg-blue">{{ t.city }}</span></td>
+          <td>{{ t.state or '—' }}</td>
+          <td class="text-muted small" style="max-width:200px">{{ t.location or '—' }}</td>
+          <td>{{ t.screen_count }}</td>
+          <td>{{ t.show_count }}</td>
+          <td>
+            <button class="btn-panel btn-panel-outline btn-sm"
+                    onclick="deleteRecord('theatre','{{ t.theater_id }}')">
+              <i class="fas fa-trash text-danger"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center py-5 text-muted">No theatres found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if total_pages > 1 %}
+  <div class="d-flex justify-content-between align-items-center p-3 border-top">
+    <span class="small text-muted">Page {{ page }} of {{ total_pages }}</span>
+    <nav><ul class="pagination pagination-sm mb-0">
+      {% if page > 1 %}<li class="page-item"><a class="page-link" href="?page={{ page-1 }}&city={{ city_filter }}">‹</a></li>{% endif %}
+      {% for p in range([1,page-2]|max, [total_pages+1,page+3]|min) %}
+        <li class="page-item {% if p==page %}active{% endif %}"><a class="page-link" href="?page={{ p }}&city={{ city_filter }}">{{ p }}</a></li>
+      {% endfor %}
+      {% if page < total_pages %}<li class="page-item"><a class="page-link" href="?page={{ page+1 }}&city={{ city_filter }}">›</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ADD THEATRE MODAL -->
+<div class="modal fade bms-modal" id="addTheatreModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-building me-2"></i>Add New Theatre</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addTheatreForm">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Theatre Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" required placeholder="e.g. PVR Cinemas">
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">City <span class="text-danger">*</span></label>
+              <input type="text" name="city" class="form-control" required placeholder="e.g. Mumbai">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">State</label>
+              <input type="text" name="state" class="form-control" placeholder="e.g. Maharashtra">
+            </div>
+          </div>
+          <div class="mt-3">
+            <label class="form-label fw-semibold">Full Address / Location</label>
+            <textarea name="location" class="form-control" rows="2" placeholder="e.g. Phoenix Mall, LBS Marg, Kurla West"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="addTheatreBtn" class="btn btn-primary fw-semibold" onclick="addTheatre()">
+          <i class="fas fa-plus me-1"></i>Add Theatre
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function addTheatre() {
+  const form = document.getElementById('addTheatreForm');
+  const btn  = document.getElementById('addTheatreBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding…';
+  const payload = {};
+  new FormData(form).forEach((v,k) => payload[k] = v);
+  try {
+    const res = await fetch('/admin/theatres/add', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) { form.reset(); setTimeout(() => location.reload(), 1500); }
+  } catch { window.toast('Network error', 'danger'); }
+  btn.disabled = false; btn.innerHTML = orig;
+}
+
+async function deleteRecord(type, id) {
+  if (!confirm(`Delete this ${type}? This cannot be undone.`)) return;
+  const url = type === 'theatre' ? `/admin/theatres/delete/${id}` : `/admin/shows/delete/${id}`;
+  try {
+    const res = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'}});
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) setTimeout(() => location.reload(), 1200);
+  } catch { window.toast('Network error', 'danger'); }
+}
+</script>
+{% endblock %}

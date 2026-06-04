@@ -1,0 +1,1264 @@
+{% extends "base.html" %}
+{% block title %}Book Tickets – {{ show.movie_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ============================================================
+   CINEBOOK SEAT SELECTION — CineBook Style
+============================================================ */
+:root {
+  --seat-avail: #ffffff;
+  --seat-avail-border: #c0c0c0;
+  --seat-selected: #22c55e;
+  --seat-selected-border: #16a34a;
+  --seat-sold: #e0e0e0;
+  --seat-sold-bg: #d1d5db;
+}
+
+/* ── STEP WIZARD ── */
+.step-bar { display:flex; align-items:center; justify-content:center; gap:0; padding:20px 0 28px; background:var(--cb-bg2, #0b0f1a); border-bottom:1px solid rgba(255,255,255,.08); }
+.step-item { display:flex; align-items:center; gap:10px; }
+.step-num { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.82rem; font-weight:800; border:2px solid rgba(255,255,255,.2); color:rgba(255,255,255,.4); background:transparent; transition:all .3s; }
+.step-num.active { background:#e5383b; border-color:#e5383b; color:#fff; box-shadow:0 4px 16px rgba(229,56,59,.4); }
+.step-num.done { background:#22c55e; border-color:#22c55e; color:#fff; }
+.step-lbl { font-size:.75rem; font-weight:700; color:rgba(255,255,255,.35); text-transform:uppercase; letter-spacing:.5px; }
+.step-lbl.active { color:#fff; }
+.step-sep { width:60px; height:2px; background:rgba(255,255,255,.1); margin:0 8px; }
+.step-sep.done { background:#22c55e; }
+@media(max-width:576px){ .step-sep{width:24px;} .step-lbl{display:none;} }
+
+/* ── MOVIE BANNER ── */
+.booking-hero { background:linear-gradient(135deg,#1a0030,#0a0020,#000); border-bottom:1px solid rgba(255,255,255,.08); padding:18px 24px; color:#fff; }
+.booking-hero h5 { font-size:1.1rem; font-weight:800; margin:0 0 4px; }
+
+/* ── STEP PANELS ── */
+.step-panel { display:none; }
+.step-panel.active { display:block; }
+
+/* ── DATE PILLS ── */
+.date-scroll { display:flex; gap:10px; overflow-x:auto; padding:4px 0 12px; scrollbar-width:none; }
+.date-scroll::-webkit-scrollbar { display:none; }
+.date-pill { flex:0 0 auto; min-width:68px; padding:10px 14px; border-radius:12px; border:1.5px solid rgba(255,255,255,.15); background:rgba(255,255,255,.04); color:rgba(255,255,255,.6); cursor:pointer; text-align:center; transition:all .2s; }
+.date-pill:hover { border-color:rgba(229,56,59,.5); color:#fff; }
+.date-pill.selected { background:#e5383b; border-color:#e5383b; color:#fff; box-shadow:0 4px 16px rgba(229,56,59,.4); }
+.date-pill .dp-day { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; opacity:.8; margin-bottom:2px; }
+.date-pill .dp-num { font-size:1.3rem; font-weight:900; line-height:1; }
+.date-pill .dp-mon { font-size:.6rem; text-transform:uppercase; opacity:.7; margin-top:2px; }
+
+/* ── SHOW CARDS ── */
+.show-card { border:1.5px solid rgba(255,255,255,.1); border-radius:14px; background:rgba(255,255,255,.04); padding:16px 20px; margin-bottom:12px; cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.show-card:hover { border-color:rgba(229,56,59,.55); background:rgba(229,56,59,.08); transform:translateX(3px); }
+.show-card.selected { border-color:#e5383b; background:rgba(229,56,59,.14); transform:translateX(3px); }
+.show-card.sold-out { opacity:.4; cursor:not-allowed; }
+.show-time { font-size:1.4rem; font-weight:900; color:#fff; }
+.show-format { font-size:.68rem; background:rgba(255,200,0,.15); color:#fbbf24; border:1px solid rgba(255,200,0,.3); padding:3px 9px; border-radius:5px; font-weight:700; letter-spacing:.5px; }
+.show-avail-ok { font-size:.75rem; font-weight:700; color:#22c55e; }
+.show-avail-few { font-size:.75rem; font-weight:700; color:#f59e0b; }
+.show-avail-none { font-size:.75rem; font-weight:700; color:#ef4444; }
+.show-price { font-size:.95rem; font-weight:800; color:#e5383b; }
+
+/* ── SCREEN ── */
+/* ── SCREEN (correct cinema perspective: flat glowing panel at top) ── */
+.screen-wrap { margin:0 20px 36px; text-align:center; }
+.screen-panel {
+  position: relative;
+  height: 14px;
+  background: linear-gradient(to bottom, rgba(255,255,255,.85) 0%, rgba(255,255,255,.18) 60%, transparent 100%);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  box-shadow: 0 -2px 28px rgba(255,255,255,.22), 0 0 60px rgba(255,255,255,.1);
+  margin: 0 30px 0;
+}
+.screen-label {
+  margin-top: 10px;
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: rgba(255,255,255,.35);
+  text-transform: uppercase;
+}
+/* Perspective aisle glow lines under screen */
+.screen-glow-lines {
+  position: relative;
+  height: 28px;
+  margin: 0 0 16px;
+  overflow: hidden;
+  opacity: .18;
+}
+.screen-glow-lines::before,
+.screen-glow-lines::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 28px;
+  background: linear-gradient(to bottom, rgba(255,255,255,.8), transparent);
+}
+.screen-glow-lines::before { left: 50%; transform: translateX(-80px); }
+.screen-glow-lines::after  { left: 50%; transform: translateX(80px); }
+
+/* ── SEAT MAP SCROLL WRAPPER ── */
+.seat-map-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(229,56,59,.4) transparent;
+}
+.seat-map-scroll::-webkit-scrollbar { height: 4px; }
+.seat-map-scroll::-webkit-scrollbar-track { background: transparent; }
+.seat-map-scroll::-webkit-scrollbar-thumb { background: rgba(229,56,59,.4); border-radius: 4px; }
+.seat-map-inner {
+  display: inline-block;
+  min-width: 100%;
+}
+
+/* ── SEAT SECTION ── */
+.seat-section { margin-bottom:28px; }
+.seat-sec-header { text-align:center; margin-bottom:14px; font-size:.8rem; font-weight:700; color:rgba(255,255,255,.5); text-transform:uppercase; letter-spacing:1px; }
+.seat-sec-price { color:#e5383b; font-size:.9rem; font-weight:900; }
+.seat-row { display:flex; align-items:center; justify-content:center; gap:5px; margin-bottom:5px; }
+.row-lbl { width:22px; font-size:.65rem; font-weight:700; color:rgba(255,255,255,.3); text-align:center; flex-shrink:0; }
+.seat-gap { width:20px; flex-shrink:0; }
+
+/* ── SEATS ── */
+.seat { width:28px; height:28px; border-radius:6px 6px 3px 3px; border:1.5px solid #c0c0c0; background:#fff; cursor:pointer; font-size:.55rem; font-weight:800; color:#666; display:flex; align-items:center; justify-content:center; transition:all .15s; position:relative; flex-shrink:0; }
+.seat:hover:not(.sold):not(.selected) { transform:scale(1.12); border-color:#666; background:#f0f0f0; }
+.seat.selected { background:#22c55e !important; border-color:#16a34a !important; color:#fff !important; }
+.seat.sold { background:#d1d5db; border-color:#e0e0e0; cursor:not-allowed; color:#b0b0b0; }
+.seat.sold::after { content:'✕'; font-size:.75rem; font-weight:900; color:#e5383b; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); line-height:1; }
+.seat.sold .seat-label { display:none; }
+.seat.recliner { width:34px; height:32px; border-radius:8px 8px 3px 3px; background:#fff8e1; border-color:#fbbf24; color:#92400e; }
+.seat.recliner.selected { background:#d97706 !important; border-color:#b45309 !important; color:#fff !important; }
+.seat.wheelchair { background:#e8f5e9; border-color:#4caf50; font-size:.9rem; }
+.seat.locked { background:#fef3c7; border-color:#f59e0b; cursor:not-allowed; color:#92400e; }
+.seat.locked::after { content:'🔒'; font-size:.5rem; position:absolute; top:1px; right:1px; }
+
+/* ── MOBILE RESPONSIVE SEAT MAP ── */
+@media (max-width: 576px) {
+  .seat-map-scroll { margin: 0 -12px; padding: 0 12px 10px; }
+  .seat { width:22px; height:22px; border-radius:5px 5px 2px 2px; font-size:.45rem; border-width:1px; }
+  .seat.recliner { width:26px; height:24px; border-radius:6px 6px 2px 2px; }
+  .seat-row { gap:3px; margin-bottom:3px; }
+  .row-lbl { width:16px; font-size:.55rem; }
+  .seat-gap { width:12px; }
+  .screen-wrap { margin:0 8px 28px; }
+  .seat-section { margin-bottom:20px; }
+}
+
+/* ── LEGEND ── */
+.seat-legend { display:flex; gap:18px; justify-content:center; flex-wrap:wrap; margin:20px 0 80px; padding-top:16px; border-top:1px solid rgba(255,255,255,.08); }
+.leg-item { display:flex; align-items:center; gap:6px; font-size:.72rem; color:rgba(255,255,255,.55); font-weight:600; }
+.leg-box { width:20px; height:20px; border-radius:4px; border:1.5px solid; flex-shrink:0; }
+
+/* ── STICKY SUMMARY ── */
+.sel-summary { position:fixed; bottom:0; left:0; right:0; z-index:200; background:linear-gradient(135deg,#1a0020,#0d0015); border-top:1px solid rgba(255,255,255,.1); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.sel-info { font-size:.8rem; color:rgba(255,255,255,.7); }
+.sel-info strong { color:#fff; font-size:1rem; }
+.sel-seats-list { font-size:.7rem; color:rgba(255,255,255,.5); margin-top:2px; }
+.sel-total { font-size:1.2rem; font-weight:900; color:#e5383b; }
+.sel-total small { font-size:.7rem; color:rgba(255,255,255,.4); font-weight:400; display:block; }
+.btn-proceed { background:linear-gradient(135deg,#e5383b,#c00); color:#fff; border:none; padding:13px 28px; border-radius:10px; font-size:.9rem; font-weight:800; cursor:pointer; box-shadow:0 4px 18px rgba(229,56,59,.4); transition:all .25s; white-space:nowrap; }
+.btn-proceed:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(229,56,59,.5); }
+.btn-proceed:disabled { opacity:.4; cursor:not-allowed; transform:none !important; }
+@media (max-width:576px) {
+  .sel-summary { padding:10px 14px; gap:8px; }
+  .sel-info strong { font-size:.88rem; }
+  .sel-total { font-size:1rem; }
+  .btn-proceed { padding:10px 18px; font-size:.82rem; }
+}
+
+/* ── PAYMENT STEP ── */
+.booking-panel { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:20px; margin-bottom:16px; }
+.booking-panel h5 { font-size:.95rem; font-weight:800; color:#fff; margin-bottom:16px; }
+.price-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.06); font-size:.88rem; color:rgba(255,255,255,.7); }
+.price-row:last-child { border-bottom:none; }
+.price-row.total-row { font-weight:800; color:#fff; font-size:1rem; }
+.payment-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.pay-card { border:1.5px solid rgba(255,255,255,.12); border-radius:12px; padding:14px; text-align:center; cursor:pointer; transition:all .2s; color:rgba(255,255,255,.6); }
+.pay-card:hover { border-color:rgba(229,56,59,.4); color:#fff; }
+.pay-card.selected { border-color:#e5383b; background:rgba(229,56,59,.1); color:#fff; }
+.pay-card i { font-size:1.3rem; display:block; margin-bottom:6px; }
+.pay-card span { font-size:.72rem; font-weight:700; }
+.pm-option:hover { border-color:rgba(229,56,59,.5) !important; background:rgba(229,56,59,.07); }
+.pm-option.selected { border-color:#e5383b !important; background:rgba(229,56,59,.15); box-shadow:0 0 0 2px rgba(229,56,59,.25); }
+.pm-option.selected div, .pm-option.selected i { color:#fff !important; }
+.btn-confirm { width:100%; padding:15px; background:linear-gradient(135deg,#e5383b,#c00); color:#fff; border:none; border-radius:12px; font-size:.95rem; font-weight:800; cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn-confirm:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(229,56,59,.4); }
+.btn-back { background:rgba(255,255,255,.07); border:1.5px solid rgba(255,255,255,.15); color:rgba(255,255,255,.7); padding:10px 20px; border-radius:10px; font-size:.82rem; font-weight:700; cursor:pointer; transition:all .2s; display:inline-flex; align-items:center; gap:6px; }
+.btn-back:hover { border-color:rgba(255,255,255,.3); color:#fff; }
+
+/* ── BOOKING SUMMARY BOX ── */
+.booking-summary-box { background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.25); border-radius:12px; padding:14px 18px; margin-bottom:16px; }
+.sum-row { display:flex; justify-content:space-between; align-items:flex-start; font-size:.83rem; margin-bottom:5px; color:rgba(255,255,255,.75); }
+.sum-row:last-child { margin-bottom:0; }
+.sum-seats-chips { display:flex; gap:5px; flex-wrap:wrap; margin-top:3px; }
+.sum-seat-chip { background:rgba(34,197,94,.2); border:1px solid rgba(34,197,94,.4); color:#4ade80; font-size:.65rem; font-weight:800; padding:2px 7px; border-radius:5px; }
+
+/* ── QR MODAL ── */
+.qr-overlay { display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.8); backdrop-filter:blur(6px); align-items:center; justify-content:center; }
+.qr-overlay.open { display:flex; }
+.qr-modal { background:#fff; border-radius:20px; width:94%; max-width:420px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6); animation:qrUp .35s cubic-bezier(.34,1.56,.64,1); }
+@keyframes qrUp { from{transform:translateY(40px) scale(.95);opacity:0} to{transform:none;opacity:1} }
+.qr-header { background:linear-gradient(135deg,#1a1a2e,#16213e); color:#fff; padding:22px 24px 18px; text-align:center; position:relative; }
+.qr-header h5 { font-size:1rem; font-weight:800; margin:0 0 4px; }
+.qr-header p { font-size:.8rem; opacity:.65; margin:0; }
+.qr-close { position:absolute; top:14px; right:16px; background:rgba(255,255,255,.15); border:none; color:#fff; width:30px; height:30px; border-radius:50%; font-size:.9rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.qr-close:hover { background:rgba(255,255,255,.3); }
+.qr-amount-badge { background:linear-gradient(135deg,#e5383b,#c00); color:#fff; font-size:1.7rem; font-weight:900; text-align:center; padding:12px 0 10px; }
+.qr-amount-badge small { font-size:.7rem; font-weight:500; opacity:.85; display:block; margin-bottom:2px; }
+.qr-body { padding:20px 24px 16px; text-align:center; }
+.qr-img-wrap { display:inline-flex; align-items:center; justify-content:center; background:#f8f9fa; border:3px solid #e5383b; border-radius:16px; padding:14px; margin-bottom:14px; }
+.qr-img-wrap img { width:180px; height:180px; display:block; border-radius:6px; }
+.qr-spinner { width:180px; height:180px; display:flex; align-items:center; justify-content:center; }
+.qr-spin-el { width:44px; height:44px; border:4px solid #eee; border-top-color:#e5383b; border-radius:50%; animation:qrspin .7s linear infinite; }
+@keyframes qrspin { to{transform:rotate(360deg)} }
+.qr-upi-id { background:#f3f4f6; border-radius:8px; padding:8px 14px; font-size:.8rem; color:#374151; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:8px; }
+.qr-steps { text-align:left; background:#fef9f9; border:1px solid #fce8e8; border-radius:10px; padding:12px 16px; margin-bottom:12px; }
+.qr-steps p { font-size:.7rem; color:#6b7280; margin:0 0 5px; font-weight:700; text-transform:uppercase; }
+.qr-steps ol { margin:0; padding-left:18px; }
+.qr-steps ol li { font-size:.77rem; color:#374151; margin-bottom:3px; line-height:1.5; }
+.qr-timer { font-size:.75rem; color:#9ca3af; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:6px; }
+#qrCountdown { color:#e5383b; font-weight:700; min-width:28px; display:inline-block; }
+.btn-paid { width:100%; padding:14px; background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border:none; border-radius:10px; font-size:.9rem; font-weight:700; cursor:pointer; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:8px; transition:all .2s; }
+.btn-paid:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(34,197,94,.4); }
+.btn-paid:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+.btn-cancel-pay { width:100%; padding:10px; background:transparent; border:1.5px solid #d1d5db; color:#6b7280; border-radius:10px; font-size:.83rem; font-weight:600; cursor:pointer; }
+.btn-cancel-pay:hover { border-color:#e5383b; color:#e5383b; }
+.pay-status { padding:36px 24px; text-align:center; }
+.pay-status .ps-icon { font-size:3.5rem; margin-bottom:14px; display:block; }
+.pay-status h5 { font-weight:800; margin-bottom:8px; font-size:1.1rem; }
+.pay-status p { color:#6b7280; font-size:.85rem; }
+.success-bar { height:5px; border-radius:3px; background:#22c55e; width:0%; transition:width 2.2s linear; margin-top:18px; }
+
+/* ── BOOKING CONFIRMATION MODAL ── */
+.confirm-overlay { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.88); backdrop-filter:blur(10px); align-items:center; justify-content:center; padding:16px; }
+.confirm-overlay.open { display:flex; animation:cfmBg .3s ease; }
+@keyframes cfmBg { from{opacity:0} to{opacity:1} }
+.confirm-modal { background:#0b0f1a; border:1px solid #1e2d48; border-radius:20px; width:100%; max-width:480px; overflow:hidden; animation:cfmUp .45s cubic-bezier(.34,1.56,.64,1); max-height:90vh; overflow-y:auto; }
+@keyframes cfmUp { from{transform:translateY(60px) scale(.9);opacity:0} to{transform:none;opacity:1} }
+.cfm-header { background:linear-gradient(135deg,#e5383b,#a00); padding:26px 28px 22px; text-align:center; }
+.cfm-tick { width:64px; height:64px; background:rgba(255,255,255,.18); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; font-size:1.8rem; border:3px solid rgba(255,255,255,.4); }
+.cfm-header h4 { color:#fff; font-weight:900; margin:0 0 4px; font-size:1.25rem; }
+.cfm-header p { color:rgba(255,255,255,.72); font-size:.84rem; margin:0; }
+.cfm-body { padding:22px 24px 20px; }
+.cfm-ref-box { background:linear-gradient(135deg,#1a1200,#2a1f00); border:2px dashed #ffd60a; border-radius:12px; padding:14px 18px; text-align:center; margin-bottom:18px; }
+.cfm-ref-lbl { color:#8899bb; font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:5px; }
+.cfm-ref-code { color:#ffd60a; font-size:1.7rem; font-weight:900; letter-spacing:5px; }
+.cfm-detail-table { width:100%; border-collapse:collapse; margin-bottom:14px; }
+.cfm-detail-table tr td { padding:8px 0; border-bottom:1px solid rgba(255,255,255,.06); font-size:.83rem; }
+.cfm-detail-table tr:last-child td { border-bottom:none; }
+.cfm-detail-table td.clbl { color:#8899bb; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; width:40%; }
+.cfm-detail-table td.cval { color:#f0f4ff; font-weight:700; text-align:right; }
+.cfm-total { background:rgba(229,56,59,.1); border:1px solid rgba(229,56,59,.3); border-radius:10px; padding:12px 18px; display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.cfm-total .ctlbl { color:#8899bb; font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+.cfm-total .ctamt { color:#e5383b; font-size:1.35rem; font-weight:900; }
+.cfm-email-note { background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.22); border-radius:8px; padding:10px 14px; color:#4ade80; font-size:.76rem; text-align:center; margin-bottom:16px; display:flex; align-items:center; gap:8px; justify-content:center; line-height:1.5; }
+.cfm-actions { display:flex; flex-direction:column; gap:9px; }
+.cfm-btn-pdf { background:linear-gradient(135deg,#e5383b,#c00); color:#fff; border:none; padding:13px 16px; border-radius:10px; font-size:.9rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; transition:all .22s; box-shadow:0 4px 18px rgba(229,56,59,.35); }
+.cfm-btn-pdf:hover { color:#fff; transform:translateY(-2px); box-shadow:0 10px 28px rgba(229,56,59,.45); }
+.cfm-btn-home { background:rgba(255,255,255,.07); border:1.5px solid rgba(255,255,255,.14); color:rgba(255,255,255,.8); padding:12px 16px; border-radius:10px; font-size:.86rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; transition:all .2s; }
+.cfm-btn-home:hover { background:rgba(255,255,255,.14); color:#fff; border-color:rgba(255,255,255,.28); }
+.cfm-btn-bkgs { background:transparent; border:1px solid rgba(255,255,255,.09); color:#8899bb; padding:10px 16px; border-radius:10px; font-size:.8rem; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none; transition:all .2s; }
+.cfm-btn-bkgs:hover { color:#fff; border-color:rgba(255,255,255,.22); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background:#06080f; min-height:calc(100vh - 70px);">
+
+<!-- STEP BAR -->
+<div class="step-bar">
+  <div class="step-item">
+    <div class="step-num active" id="sn1">1</div>
+    <div class="step-lbl active" id="sl1">Show</div>
+  </div>
+  <div class="step-sep" id="sep1"></div>
+  <div class="step-item">
+    <div class="step-num" id="sn2">2</div>
+    <div class="step-lbl" id="sl2">Seats</div>
+  </div>
+  <div class="step-sep" id="sep2"></div>
+  <div class="step-item">
+    <div class="step-num" id="sn3">3</div>
+    <div class="step-lbl" id="sl3">Payment</div>
+  </div>
+</div>
+
+<!-- LOCK TIMER BANNER -->
+<div id="lockTimerBanner" style="display:none;background:linear-gradient(90deg,#1a0a00,#2a1400);border-bottom:1px solid rgba(245,158,11,.25);padding:8px 20px;text-align:center;">
+  <span style="color:#f59e0b;font-size:.78rem;font-weight:700;">
+    <i class="fas fa-lock me-1"></i>
+    Your selected seats are reserved for <span id="lockTimerDisplay" style="color:#fbbf24;font-family:monospace;font-size:.88rem;min-width:40px;display:inline-block;">05:00</span>
+    &nbsp;·&nbsp; Complete payment to confirm.
+  </span>
+</div>
+
+<!-- MOVIE BANNER -->
+<div class="booking-hero">
+  <div class="container-fluid px-3">
+    <div class="d-flex gap-3 align-items-center flex-wrap">
+      <div style="width:48px;height:64px;border-radius:7px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fas fa-film text-white"></i>
+      </div>
+      <div>
+        <h5>{{ show.movie_title }}</h5>
+        <div class="d-flex flex-wrap gap-2">
+          <span style="color:rgba(255,255,255,.6);font-size:.8rem"><i class="fas fa-building me-1"></i>{{ show.theatre_name }}</span>
+          <span style="color:rgba(255,255,255,.6);font-size:.8rem"><i class="fas fa-map-marker-alt me-1"></i>{{ show.city }}</span>
+          {% if show.language %}<span style="background:rgba(96,165,250,.15);color:#60a5fa;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:5px;border:1px solid rgba(96,165,250,.25)">{{ show.language }}</span>{% endif %}
+          {% if show.genre %}<span style="background:rgba(251,191,36,.12);color:#fbbf24;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:5px;border:1px solid rgba(251,191,36,.25)">{{ show.genre }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid px-3 py-4" style="max-width:900px;">
+
+<!-- ═══ STEP 1: DATE & SHOW SELECTION ═══ -->
+<div class="step-panel active" id="step1">
+  <h6 style="color:rgba(255,255,255,.5);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;"><i class="fas fa-calendar me-2"></i>Select Date</h6>
+  <div class="date-scroll" id="dateScroll"></div>
+
+  <h6 style="color:rgba(255,255,255,.5);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin:24px 0 6px;">
+    <i class="fas fa-clock me-2"></i>Select Show &mdash; {{ show.theatre_name }}, Screen {{ show.screen_number or '1' }}
+  </h6>
+  <p style="color:rgba(229,56,59,.7);font-size:.72rem;font-weight:600;margin-bottom:14px;"><i class="fas fa-hand-pointer me-1"></i>Tap a show time to instantly go to seat selection</p>
+  <div id="showsList"></div>
+</div>
+
+<!-- ═══ STEP 2: SEAT MAP ═══ -->
+<div class="step-panel" id="step2">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div style="color:#fff;font-size:.9rem;font-weight:800;" id="selectedShowInfo">—</div>
+      <div style="color:rgba(255,255,255,.45);font-size:.75rem;" id="selectedDateInfo">—</div>
+    </div>
+    <button class="btn-back" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Change Show</button>
+  </div>
+
+  <!-- SEAT SECTIONS FIRST (back rows at top, front rows near screen at bottom) -->
+  <p class="d-sm-none" style="color:rgba(255,255,255,.35);font-size:.65rem;text-align:center;margin-bottom:10px;"><i class="fas fa-arrows-left-right me-1"></i>Swipe left/right to see all seats</p>
+  <div class="seat-map-scroll">
+    <div class="seat-map-inner">
+      <div class="seat-section">
+        <div class="seat-sec-header">&#8377;770 &middot; <span style="color:#fbbf24;">Recliner</span></div>
+        <div id="reclineRows"></div>
+      </div>
+      <div class="seat-section">
+        <div class="seat-sec-header">&#8377;390 &middot; <span style="color:#e5383b;">Prime</span></div>
+        <div id="primeRows"></div>
+      </div>
+      <div class="seat-section">
+        <div class="seat-sec-header">&#8377;300 &middot; <span style="color:rgba(255,255,255,.6);">Classic</span></div>
+        <div id="classicRows"></div>
+      </div>
+
+      <!-- CINEMA SCREEN AT BOTTOM — front of the auditorium -->
+      <div class="screen-wrap" style="margin-top:30px;margin-bottom:8px;">
+        <div class="screen-glow-lines"></div>
+        <div class="screen-panel"></div>
+        <div class="screen-label">S C R E E N</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="seat-legend">
+    <div class="leg-item"><div class="leg-box" style="background:#fff;border-color:#c0c0c0;"></div> Available</div>
+    <div class="leg-item"><div class="leg-box" style="background:#22c55e;border-color:#16a34a;"></div> Selected</div>
+    <div class="leg-item"><div class="leg-box" style="background:#fff8e1;border-color:#fbbf24;"></div> Recliner</div>
+    <div class="leg-item"><div class="leg-box" style="background:#fef3c7;border-color:#f59e0b;"></div> 🔒 Reserved</div>
+    <div class="leg-item"><div class="leg-box" style="background:#d1d5db;border-color:#e0e0e0;position:relative;"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:.65rem;font-weight:900;color:#e5383b;line-height:1;">✕</span></div> Booked</div>
+  </div>
+</div>
+
+<!-- ═══ STEP 3: ORDER SUMMARY + PAY BUTTON ═══ -->
+<div class="step-panel" id="step3">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+    <h5 style="color:#fff;font-weight:800;margin:0;"><i class="fas fa-receipt text-danger me-2"></i>Order Summary</h5>
+    <button class="btn-back" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Change Seats</button>
+  </div>
+
+  <div class="booking-summary-box">
+    <div class="sum-row"><span>Movie</span><strong>{{ show.movie_title }}</strong></div>
+    <div class="sum-row"><span>Theatre</span><span>{{ show.theatre_name }}, Screen {{ show.screen_number or '1' }}</span></div>
+    <div class="sum-row"><span>Show</span><span id="sum-show">—</span></div>
+    <div class="sum-row"><span>Date</span><span id="sum-date">—</span></div>
+    <div class="sum-row"><span>Seats</span><div><div class="sum-seats-chips" id="sum-seats-chips"></div></div></div>
+  </div>
+
+  <div class="booking-panel">
+    <h5><i class="fas fa-receipt text-danger me-2"></i>Price Breakdown</h5>
+    <div id="priceBreakdown"></div>
+    <div class="price-row total-row"><span>Total Amount</span><span style="color:#e5383b;" id="priceTotal">&#8377;0</span></div>
+  </div>
+
+  <button class="btn-confirm" id="confirmBtn" onclick="openPaymentModal()">
+    <i class="fas fa-lock"></i> Choose Payment &amp; Pay
+  </button>
+  <p style="text-align:center;color:rgba(255,255,255,.35);font-size:.72rem;margin-top:10px;"><i class="fas fa-shield-alt me-1 text-success"></i>100% Secure Payment</p>
+</div>
+
+</div><!-- /container -->
+
+<!-- STICKY BOTTOM BAR (step 2 only) -->
+<div class="sel-summary" id="selSummary" style="display:none;">
+  <div class="sel-info">
+    <strong id="selCount">0 Seats</strong>
+    <div class="sel-seats-list" id="selSeatList">Tap seats to select</div>
+  </div>
+  <div class="sel-total">
+    <small>Total (incl. fee)</small>
+    <span id="selTotal">&#8377;0</span>
+  </div>
+  <button class="btn-proceed" id="toPayBtn" onclick="goToPayment()" disabled>
+    Pay Now &nbsp;<i class="fas fa-arrow-right"></i>
+  </button>
+</div>
+
+</div><!-- /outer -->
+
+<!-- PAYMENT OPTIONS MODAL -->
+<div class="qr-overlay" id="paymentModal" style="z-index:9998;">
+  <div class="qr-modal" style="background:#0b0f1a;max-width:480px;">
+    <div class="qr-header" style="background:linear-gradient(135deg,#1a0030,#0a0020);">
+      <button class="qr-close" onclick="closePaymentModal()"><i class="fas fa-times"></i></button>
+      <div style="font-size:1.5rem;margin-bottom:8px;">💳</div>
+      <h5 style="color:#fff;">Select Payment Method</h5>
+      <p style="color:rgba(255,255,255,.55);">Choose how you'd like to pay</p>
+    </div>
+    <div class="qr-amount-badge"><small>Total Amount</small>&#8377;<span id="payModalAmount">0</span></div>
+    <div style="padding:20px 20px 16px;">
+      <!-- UPI Apps Row -->
+      <div style="margin-bottom:14px;">
+        <div style="color:rgba(255,255,255,.4);font-size:.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">UPI &amp; QR</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div class="pm-option" data-method="UPI" onclick="selectPayMethod(this)" style="border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;">
+            <div style="font-size:1.4rem;margin-bottom:4px;">📱</div>
+            <div style="font-size:.62rem;font-weight:700;color:rgba(255,255,255,.7);">UPI / QR</div>
+          </div>
+          <div class="pm-option" data-method="GPay" onclick="selectPayMethod(this)" style="border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;">
+            <div style="font-size:1.4rem;margin-bottom:4px;">🔵</div>
+            <div style="font-size:.62rem;font-weight:700;color:rgba(255,255,255,.7);">GPay</div>
+          </div>
+          <div class="pm-option" data-method="PhonePe" onclick="selectPayMethod(this)" style="border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;">
+            <div style="font-size:1.4rem;margin-bottom:4px;">🟣</div>
+            <div style="font-size:.62rem;font-weight:700;color:rgba(255,255,255,.7);">PhonePe</div>
+          </div>
+          <div class="pm-option" data-method="Paytm" onclick="selectPayMethod(this)" style="border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;">
+            <div style="font-size:1.4rem;margin-bottom:4px;">🔷</div>
+            <div style="font-size:.62rem;font-weight:700;color:rgba(255,255,255,.7);">Paytm</div>
+          </div>
+        </div>
+      </div>
+      <!-- Cards Row -->
+      <div style="margin-bottom:14px;">
+        <div style="color:rgba(255,255,255,.4);font-size:.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Cards</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+          <div class="pm-option" data-method="Credit Card" onclick="selectPayMethod(this)" style="border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px;">
+            <i class="fas fa-credit-card" style="color:#60a5fa;font-size:1.1rem;"></i>
+            <div><div style="font-size:.75rem;font-weight:700;color:#fff;">Credit Card</div><div style="font-size:.6rem;color:rgba(255,255,255,.4);">Visa, Mastercard, Amex</div></div>
+          </div>
+          <div class="pm-option" data-method="Debit Card" onclick="selectPayMethod(this)" style="border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:10px;">
+            <i class="fas fa-credit-card" style="color:#34d399;font-size:1.1rem;"></i>
+            <div><div style="font-size:.75rem;font-weight:700;color:#fff;">Debit Card</div><div style="font-size:.6rem;color:rgba(255,255,255,.4);">All banks supported</div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Other Options -->
+      <div style="margin-bottom:18px;">
+        <div style="color:rgba(255,255,255,.4);font-size:.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Other Options</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+          <div class="pm-option" data-method="Net Banking" onclick="selectPayMethod(this)" style="border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;">
+            <i class="fas fa-university" style="color:#fbbf24;font-size:1.1rem;display:block;margin-bottom:5px;"></i>
+            <div style="font-size:.62rem;font-weight:700;color:rgba(255,255,255,.7);">Net Banking</div>
+          </div>
+          <div class="pm-option" data-method="Wallet" onclick="selectPayMethod(this)" style="border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;">
+            <i class="fas fa-wallet" style="color:#a78bfa;font-size:1.1rem;display:block;margin-bottom:5px;"></i>
+            <div style="font-size:.62rem;font-weight:700;color:rgba(255,255,255,.7);">Wallet</div>
+          </div>
+          <div class="pm-option" data-method="EMI" onclick="selectPayMethod(this)" style="border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:all .2s;">
+            <i class="fas fa-calendar-check" style="color:#fb923c;font-size:1.1rem;display:block;margin-bottom:5px;"></i>
+            <div style="font-size:.62rem;font-weight:700;color:rgba(255,255,255,.7);">EMI</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-confirm" id="proceedPayBtn" onclick="proceedWithPayment()" disabled style="opacity:.4;">
+        <i class="fas fa-lock"></i> Proceed to Pay
+      </button>
+      <p style="text-align:center;color:rgba(255,255,255,.25);font-size:.68rem;margin-top:8px;"><i class="fas fa-shield-alt me-1 text-success"></i>100% Secure &amp; Encrypted</p>
+    </div>
+  </div>
+</div>
+
+<!-- QR PAYMENT MODAL -->
+<div class="qr-overlay" id="qrOverlay">
+  <div class="qr-modal">
+    <div id="qrStep1">
+      <div class="qr-header">
+        <button class="qr-close" onclick="closeQR()"><i class="fas fa-times"></i></button>
+        <div style="font-size:1.6rem;margin-bottom:8px;">📱</div>
+        <h5>Scan &amp; Pay via UPI</h5>
+        <p>Use any UPI app to complete payment</p>
+      </div>
+      <div class="qr-amount-badge"><small>Total Amount</small>&#8377;<span id="qrAmount">0</span></div>
+      <div class="qr-body">
+        <div class="qr-img-wrap">
+          <div class="qr-spinner" id="qrSpinner"><div class="qr-spin-el"></div></div>
+          <img id="qrImage" src="" alt="UPI QR" style="display:none;">
+        </div>
+        <div class="qr-upi-id"><i class="fas fa-at" style="color:#e5383b;"></i>Pay to: <strong>cinebook@upi</strong></div>
+        <div class="qr-timer" style="margin-top:10px;"><i class="fas fa-clock"></i>Expires in <span id="qrCountdown">05:00</span></div>
+        <button class="btn-paid" id="paidBtn" onclick="confirmPayment()"><i class="fas fa-check-circle"></i> I have paid — Confirm Booking</button>
+        <button class="btn-cancel-pay" onclick="closeQR()">Cancel</button>
+      </div>
+    </div>
+    <div id="qrStep2" style="display:none;">
+      <div class="pay-status"><span class="ps-icon">⏳</span><h5>Verifying Payment…</h5><p>Please wait while we confirm and generate your ticket.</p></div>
+    </div>
+    <div id="qrStep3" style="display:none;">
+      <div class="pay-status"><span class="ps-icon">🎉</span><h5 style="color:#16a34a;">Payment Successful!</h5><p>Your booking is confirmed! Redirecting…</p><div class="success-bar" id="successBar"></div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ═══════════════════════════════════════════════
+   SHOW DATA FROM DB
+═══════════════════════════════════════════════ */
+const BASE_PRICE = parseFloat("{{ show.price_per_ticket or 300 }}");
+const SHOW_ID    = "{{ show.show_id }}";
+
+const SHOW_TIMES = [
+  { id:'t1', time:'10:00 AM', format:'2D',   avail:48, price: Math.round(BASE_PRICE * 0.85) },
+  { id:'t2', time:'{{ show.start_time }}', format:'2D', avail:{{ show.available_seats or 35 }}, price: BASE_PRICE },
+  { id:'t3', time:'04:30 PM', format:'4DX',  avail:22, price: BASE_PRICE + 60 },
+  { id:'t4', time:'07:15 PM', format:'IMAX', avail:14, price: BASE_PRICE + 120 },
+  { id:'t5', time:'10:00 PM', format:'2D',   avail:55, price: Math.round(BASE_PRICE * 0.9) },
+];
+
+function getTiers() {
+  const base = selectedShow ? selectedShow.price : BASE_PRICE;
+  return [
+    { key:'recliner', price: Math.round(base * 2.4),  rows:['A'],                     totalCols:17, aisleAfter:8  },
+    { key:'prime',    price: Math.round(base * 1.25), rows:['B','C','D','E'],          totalCols:22, aisleAfter:14 },
+    { key:'classic',  price: base,                    rows:['F','G','H','I','J','K'],  totalCols:22, aisleAfter:14 },
+  ];
+}
+
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let currentStep   = 1;
+let selectedDate  = null;
+let selectedShow  = null;
+let selectedSeats = [];
+let payMethod     = 'UPI';
+
+// Seat availability state (fetched from server)
+let seatStatus = { booked: [], locked: [], mine: [] };
+
+// Polling interval and lock countdown
+let pollInterval  = null;
+let lockTimer     = null;
+let lockSecondsLeft = 300; // 5 min real-world seat hold
+
+/* ═══════════════════════════════════════════════
+   SEAT STATUS POLLING
+═══════════════════════════════════════════════ */
+async function fetchSeatStatus() {
+  try {
+    const res = await fetch(`/seats/status/${SHOW_ID}`);
+    const d   = await res.json();
+    if (d.success) {
+      seatStatus = d;
+      refreshSeatVisuals();
+    }
+  } catch(e) { /* non-fatal */ }
+}
+
+function startPolling() {
+  fetchSeatStatus();                         // immediate
+  pollInterval = setInterval(fetchSeatStatus, 5000); // every 5 s
+}
+
+function stopPolling() {
+  clearInterval(pollInterval);
+  pollInterval = null;
+}
+
+function refreshSeatVisuals() {
+  // Update every seat element to reflect current booked/locked/mine state
+  document.querySelectorAll('.seat').forEach(el => {
+    const sid = el.dataset.seatId;
+    if (!sid) return;
+
+    // Don't touch seats the current user already selected (green)
+    const isMySelected = selectedSeats.some(s => s.seatId === sid);
+
+    if (seatStatus.booked.includes(sid)) {
+      el.className = el.className.replace(/(locked|selected)/g, '').trim();
+      el.classList.add('sold');
+      el.style.pointerEvents = 'none';
+      el.title = `${sid} – Booked`;
+    } else if (seatStatus.locked.includes(sid)) {
+      if (!isMySelected) {
+        el.className = el.className.replace(/(sold|selected)/g, '').trim();
+        el.classList.add('locked');
+        el.style.pointerEvents = 'none';
+        el.title = `${sid} – Reserved by another user`;
+      }
+    } else if (!isMySelected) {
+      // Available — restore
+      el.classList.remove('sold','locked');
+      el.style.pointerEvents = '';
+      // Keep correct tier class
+      const tier = el.dataset.tier;
+      const baseCls = tier === 'recliner' ? 'seat recliner' : 'seat';
+      el.className = baseCls;
+      el.title = `${sid} – ₹${el.dataset.price}`;
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   LOCK SEAT TIMER (shown in banner)
+═══════════════════════════════════════════════ */
+function startLockCountdown(seconds) {
+  lockSecondsLeft = seconds;
+  clearInterval(lockTimer);
+  document.getElementById('lockTimerBanner').style.display = 'block';
+  lockTimer = setInterval(() => {
+    lockSecondsLeft--;
+    const m = String(Math.floor(lockSecondsLeft / 60)).padStart(2,'0');
+    const s = String(lockSecondsLeft % 60).padStart(2,'0');
+    document.getElementById('lockTimerDisplay').textContent = m + ':' + s;
+    if (lockSecondsLeft <= 0) {
+      clearInterval(lockTimer);
+      document.getElementById('lockTimerDisplay').textContent = 'Expired';
+      // Force deselect all seats and alert user
+      handleLockExpiry();
+    }
+  }, 1000);
+}
+
+function stopLockCountdown() {
+  clearInterval(lockTimer);
+  lockTimer = null;
+  document.getElementById('lockTimerBanner').style.display = 'none';
+}
+
+async function handleLockExpiry() {
+  // Release all locks server-side and reset UI
+  const ids = selectedSeats.map(s => s.seatId);
+  if (ids.length) {
+    try {
+      await fetch('/seats/release', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ show_id: SHOW_ID, seat_ids: ids })
+      });
+    } catch(e) {}
+  }
+  selectedSeats = [];
+  updateStickyBar();
+  buildSeatMap();
+  fetchSeatStatus();
+  alert('⏰ Your seat reservation has expired. Please re-select your seats.');
+}
+
+/* ═══════════════════════════════════════════════
+   STEP 1: DATE + SHOW
+═══════════════════════════════════════════════ */
+function buildDates() {
+  const container = document.getElementById('dateScroll');
+  const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MON_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const today = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const pill = document.createElement('div');
+    pill.className = 'date-pill' + (i === 0 ? ' selected' : '');
+    pill.innerHTML =
+      `<div class="dp-day">${i === 0 ? 'Today' : DAY_NAMES[d.getDay()]}</div>` +
+      `<div class="dp-num">${d.getDate()}</div>` +
+      `<div class="dp-mon">${MON_NAMES[d.getMonth()]}</div>`;
+    const iso = d.toISOString().split('T')[0];
+    pill.dataset.date = iso;
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.date-pill').forEach(p => p.classList.remove('selected'));
+      pill.classList.add('selected');
+      selectedDate = iso;
+      selectedShow = null;
+      buildShows();
+    });
+    container.appendChild(pill);
+  }
+  selectedDate = today.toISOString().split('T')[0];
+  buildShows();
+}
+
+/* ═══════════════════════════════════════════════
+   REAL-TIME SHOW FILTERING HELPERS
+═══════════════════════════════════════════════ */
+function parseShowTime(timeStr) {
+  // Parses "10:00 AM", "07:15 PM", "10:00:00" into total minutes since midnight
+  if (!timeStr) return null;
+  timeStr = timeStr.trim();
+
+  // Handle "HH:MM:SS" 24-hour format (e.g. "10:00:00")
+  const hms = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (hms) {
+    return parseInt(hms[1]) * 60 + parseInt(hms[2]);
+  }
+
+  // Handle "HH:MM AM/PM" 12-hour format
+  const ampm = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (ampm) {
+    let h = parseInt(ampm[1]);
+    const m = parseInt(ampm[2]);
+    const period = ampm[3].toUpperCase();
+    if (period === 'AM' && h === 12) h = 0;
+    if (period === 'PM' && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+  return null;
+}
+
+function isShowPast(timeStr) {
+  // Only filter for today's date
+  const todayIso = new Date().toISOString().split('T')[0];
+  if (selectedDate !== todayIso) return false;
+
+  const showMinutes = parseShowTime(timeStr);
+  if (showMinutes === null) return false;
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // Hide shows that started more than 10 minutes ago (BookMyShow-style grace window)
+  return showMinutes < currentMinutes - 10;
+}
+
+function buildShows() {
+  const c = document.getElementById('showsList');
+  c.innerHTML = '';
+
+  const todayIso = new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === todayIso;
+
+  const visibleShows = isToday
+    ? SHOW_TIMES.filter(s => !isShowPast(s.time))
+    : SHOW_TIMES;
+
+  // Show a "no upcoming shows" message if all are past
+  if (isToday && visibleShows.length === 0) {
+    c.innerHTML = `
+      <div style="text-align:center;padding:48px 24px;color:rgba(255,255,255,.45);">
+        <i class="fas fa-moon" style="font-size:2.5rem;margin-bottom:16px;display:block;color:rgba(229,56,59,.4);"></i>
+        <div style="font-size:1rem;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:8px;">No more shows today</div>
+        <div style="font-size:.8rem;">All shows for today have ended. Please select a future date.</div>
+      </div>`;
+    return;
+  }
+
+  // Show "N shows filtered" info badge for today
+  const filteredCount = SHOW_TIMES.length - visibleShows.length;
+  if (isToday && filteredCount > 0) {
+    const badge = document.createElement('div');
+    badge.style.cssText = 'font-size:.72rem;color:rgba(255,255,255,.35);margin-bottom:10px;display:flex;align-items:center;gap:6px;';
+    badge.innerHTML = `<i class="fas fa-clock"></i> ${filteredCount} past show${filteredCount > 1 ? 's' : ''} hidden &mdash; showing only upcoming shows`;
+    c.appendChild(badge);
+  }
+
+  visibleShows.forEach(s => {
+    const isSoldOut = s.avail <= 0;
+    const card = document.createElement('div');
+    card.className = 'show-card' + (isSoldOut ? ' sold-out' : '');
+    const availHtml = isSoldOut
+      ? `<span class="show-avail-none">Sold Out</span>`
+      : s.avail > 20
+        ? `<span class="show-avail-ok"><i class="fas fa-check-circle me-1"></i>${s.avail} seats available</span>`
+        : s.avail > 5
+          ? `<span class="show-avail-few"><i class="fas fa-exclamation-circle me-1"></i>Few seats left (${s.avail})</span>`
+          : `<span class="show-avail-none"><i class="fas fa-times-circle me-1"></i>Almost full (${s.avail})</span>`;
+    card.innerHTML =
+      `<div>
+        <div class="show-time">${s.time}</div>
+        <div style="display:flex;gap:6px;margin-top:6px;align-items:center;">
+          <span class="show-format">${s.format}</span>
+          ${availHtml}
+        </div>
+      </div>
+      <div style="text-align:right;display:flex;align-items:center;gap:14px;">
+        <div>
+          <div class="show-price">&#8377;${s.price}</div>
+          <div style="font-size:.62rem;color:rgba(255,255,255,.3);margin-top:2px;">onwards/ticket</div>
+        </div>
+        ${!isSoldOut ? `<div style="background:rgba(229,56,59,.15);border:1.5px solid rgba(229,56,59,.35);border-radius:8px;padding:8px 13px;font-size:.72rem;font-weight:800;color:#e5383b;white-space:nowrap;"><i class="fas fa-couch me-1"></i>Select Seats</div>` : ''}
+      </div>`;
+    if (!isSoldOut) {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.show-card').forEach(c2 => c2.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedShow = s;
+        setTimeout(() => {
+          selectedSeats = [];
+          buildSeatMap();
+          updateStickyBar();
+          goToStep(2);
+          startPolling();          // ← start polling when user enters seat view
+        }, 260);
+      });
+    }
+    c.appendChild(card);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   AUTO-REFRESH: re-filter shows every 60 seconds
+   so past shows disappear in real time on step 1
+═══════════════════════════════════════════════ */
+let showRefreshTimer = null;
+
+function startShowRefresh() {
+  stopShowRefresh();
+  showRefreshTimer = setInterval(() => {
+    // Only refresh if user is still on step 1 (date/show selection)
+    if (currentStep === 1) {
+      buildShows();
+    }
+  }, 60000); // every 60 seconds
+}
+
+function stopShowRefresh() {
+  if (showRefreshTimer) {
+    clearInterval(showRefreshTimer);
+    showRefreshTimer = null;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   STEP 2: SEAT MAP
+═══════════════════════════════════════════════ */
+function isSold(rowLetter, col) {
+  const sid = `${rowLetter}${String(col).padStart(2,'0')}`;
+  return seatStatus.booked.includes(sid);
+}
+
+function isLockedByOther(rowLetter, col) {
+  const sid = `${rowLetter}${String(col).padStart(2,'0')}`;
+  return seatStatus.locked.includes(sid);
+}
+
+function buildSeatMap() {
+  const TIERS = getTiers();
+  document.getElementById('selectedShowInfo').textContent =
+    `{{ show.theatre_name }}  ·  ${selectedShow.time}  ${selectedShow.format}`;
+  document.getElementById('selectedDateInfo').textContent =
+    `${selectedDate}  ·  Screen {{ show.screen_number or '1' }}`;
+
+  document.getElementById('reclineRows').previousElementSibling.innerHTML =
+    `&#8377;${TIERS[0].price} &middot; <span style="color:#fbbf24;">Recliner</span>`;
+  document.getElementById('primeRows').previousElementSibling.innerHTML =
+    `&#8377;${TIERS[1].price} &middot; <span style="color:#e5383b;">Prime</span>`;
+  document.getElementById('classicRows').previousElementSibling.innerHTML =
+    `&#8377;${TIERS[2].price} &middot; <span style="color:rgba(255,255,255,.6);">Classic</span>`;
+
+  const sectionIds = { recliner:'reclineRows', prime:'primeRows', classic:'classicRows' };
+
+  TIERS.forEach(tier => {
+    const container = document.getElementById(sectionIds[tier.key]);
+    container.innerHTML = '';
+    tier.rows.forEach(rowLetter => {
+      const rowDiv = document.createElement('div');
+      rowDiv.className = 'seat-row';
+      rowDiv.appendChild(Object.assign(document.createElement('div'), { className:'row-lbl', textContent:rowLetter }));
+      for (let c = 1; c <= tier.totalCols; c++) {
+        if (c === tier.aisleAfter + 1) {
+          rowDiv.appendChild(Object.assign(document.createElement('div'), { className:'seat-gap' }));
+        }
+        const sold        = isSold(rowLetter, c);
+        const lockedOther = isLockedByOther(rowLetter, c);
+        const seatId = `${rowLetter}${String(c).padStart(2,'0')}`;
+        const seat   = document.createElement('div');
+        let cls = 'seat';
+        if (tier.key === 'recliner') cls += ' recliner';
+        if (sold)        cls += ' sold';
+        else if (lockedOther) cls += ' locked';
+        seat.className    = cls;
+        seat.dataset.seatId  = seatId;
+        seat.dataset.tier    = tier.key;
+        seat.dataset.price   = tier.price;
+        seat.title = sold        ? `${seatId} – Booked`
+                   : lockedOther ? `${seatId} – Reserved by another user`
+                   : `${seatId} – ₹${tier.price}`;
+        if (!sold && !lockedOther) {
+          seat.addEventListener('click', () => toggleSeat(seat, seatId, tier));
+        }
+        rowDiv.appendChild(seat);
+      }
+      rowDiv.appendChild(Object.assign(document.createElement('div'), { className:'row-lbl', textContent:rowLetter }));
+      container.appendChild(rowDiv);
+    });
+  });
+}
+
+async function toggleSeat(seat, seatId, tier) {
+  const idx = selectedSeats.findIndex(s => s.seatId === seatId);
+
+  if (idx > -1) {
+    // ── DESELECT: release lock server-side ──
+    selectedSeats.splice(idx, 1);
+    seat.classList.remove('selected');
+    try {
+      await fetch('/seats/release', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ show_id: SHOW_ID, seat_ids: [seatId] })
+      });
+    } catch(e) {}
+    if (selectedSeats.length === 0) stopLockCountdown();
+  } else {
+    // ── SELECT: lock server-side first ──
+    if (selectedSeats.length >= 10) { alert('Max 10 seats per booking.'); return; }
+
+    // Optimistic UI — grey it out immediately while we check
+    seat.style.opacity = '0.5';
+    try {
+      const res = await fetch('/seats/lock', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ show_id: SHOW_ID, seat_ids: [seatId] })
+      });
+      const d = await res.json();
+
+      if (d.conflicts && d.conflicts.find(c => c.seat_id === seatId)) {
+        // Someone else grabbed it just now — mark as locked
+        seat.style.opacity = '';
+        seat.classList.add('locked');
+        seat.style.pointerEvents = 'none';
+        seat.title = `${seatId} – Just reserved by another user`;
+        fetchSeatStatus(); // refresh
+        alert(`⚠️ Seat ${seatId} was just reserved by another user. Please choose a different seat.`);
+        return;
+      }
+
+      // Lock succeeded
+      seat.style.opacity = '';
+      selectedSeats.push({ seatId, tier: tier.key, price: tier.price });
+      seat.classList.add('selected');
+
+      // Start / refresh 5-min countdown
+      startLockCountdown(300);
+
+    } catch(e) {
+      seat.style.opacity = '';
+      alert('Network error. Please try again.');
+    }
+  }
+  updateStickyBar();
+}
+
+function updateStickyBar() {
+  const n = selectedSeats.length;
+  const subtotal = selectedSeats.reduce((a, s) => a + s.price, 0);
+  const fee = n * 30;
+  const grandTotal = subtotal + fee;
+  document.getElementById('selCount').textContent = n > 0 ? `${n} Seat${n > 1 ? 's' : ''} Selected` : 'No Seats Selected';
+  document.getElementById('selSeatList').textContent = n > 0 ? selectedSeats.map(s => s.seatId).join(', ') : 'Tap seats to select';
+  document.getElementById('selTotal').textContent = `₹${grandTotal}`;
+  const payBtn = document.getElementById('toPayBtn');
+  payBtn.disabled = n === 0;
+  payBtn.innerHTML = n > 0 ? `Pay ₹${grandTotal} &nbsp;<i class="fas fa-arrow-right"></i>` : `Pay Now &nbsp;<i class="fas fa-arrow-right"></i>`;
+}
+
+/* ═══════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════ */
+function goToStep(n) {
+  document.querySelectorAll('.step-panel').forEach((p, i) => p.classList.toggle('active', i + 1 === n));
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById(`sn${i}`).className = 'step-num ' + (i < n ? 'done' : i === n ? 'active' : '');
+    document.getElementById(`sl${i}`).className = 'step-lbl ' + (i === n ? 'active' : '');
+  }
+  for (let i = 1; i <= 2; i++) {
+    const sep = document.getElementById(`sep${i}`);
+    if (sep) sep.className = 'step-sep ' + (i < n ? 'done' : '');
+  }
+  currentStep = n;
+  // Show sticky bar only on seat step
+  document.getElementById('selSummary').style.display = n === 2 ? 'flex' : 'none';
+  // Stop polling when not on seat step
+  if (n !== 2) stopPolling();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goToPayment() {
+  if (!selectedSeats.length) return;
+  document.getElementById('sum-show').textContent = `${selectedShow.time} (${selectedShow.format})`;
+  document.getElementById('sum-date').textContent = selectedDate;
+  const chips = document.getElementById('sum-seats-chips');
+  chips.innerHTML = selectedSeats.map(s => `<span class="sum-seat-chip">${s.seatId}</span>`).join('');
+
+  const groups = {};
+  selectedSeats.forEach(s => {
+    if (!groups[s.tier]) groups[s.tier] = { count:0, price:s.price };
+    groups[s.tier].count++;
+  });
+  const fee = selectedSeats.length * 30;
+  const subtotal = selectedSeats.reduce((a, s) => a + s.price, 0);
+  let html = '';
+  Object.entries(groups).forEach(([key, g]) => {
+    const lbl = key.charAt(0).toUpperCase() + key.slice(1);
+    html += `<div class="price-row"><span>${lbl} × ${g.count}</span><span>&#8377;${g.count * g.price}</span></div>`;
+  });
+  html += `<div class="price-row"><span style="color:rgba(255,255,255,.5);">Convenience Fee</span><span>&#8377;${fee}</span></div>`;
+  document.getElementById('priceBreakdown').innerHTML = html;
+  document.getElementById('priceTotal').textContent = `₹${subtotal + fee}`;
+  goToStep(3);
+}
+
+/* ═══════════════════════════════════════════════
+   PAYMENT MODAL
+═══════════════════════════════════════════════ */
+function openPaymentModal() {
+  const total = getTotalAmount();
+  document.getElementById('payModalAmount').textContent = total;
+  document.querySelectorAll('.pm-option').forEach(x => x.classList.remove('selected'));
+  document.getElementById('proceedPayBtn').disabled = true;
+  document.getElementById('proceedPayBtn').style.opacity = '.4';
+  payMethod = null;
+  document.getElementById('paymentModal').classList.add('open');
+}
+
+function closePaymentModal() { document.getElementById('paymentModal').classList.remove('open'); }
+
+function selectPayMethod(el) {
+  document.querySelectorAll('.pm-option').forEach(x => x.classList.remove('selected'));
+  el.classList.add('selected');
+  payMethod = el.dataset.method;
+  document.getElementById('proceedPayBtn').disabled = false;
+  document.getElementById('proceedPayBtn').style.opacity = '1';
+}
+
+function proceedWithPayment() {
+  closePaymentModal();
+  const upiMethods = ['UPI','GPay','PhonePe','Paytm'];
+  if (upiMethods.includes(payMethod)) openQRModal();
+  else submitBooking();
+}
+
+async function submitBooking() {
+  const btn = document.getElementById('confirmBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing…'; }
+  await doBook();
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-lock"></i> Choose Payment & Pay'; }
+}
+
+/* ═══════════════════════════════════════════════
+   QR MODAL
+═══════════════════════════════════════════════ */
+let qrTimer = null;
+
+function getTotalAmount() {
+  return selectedSeats.reduce((a, s) => a + s.price, 0) + selectedSeats.length * 30;
+}
+
+async function openQRModal() {
+  const total = getTotalAmount();
+  document.getElementById('qrAmount').textContent = total;
+  ['qrStep2','qrStep3'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('qrStep1').style.display = '';
+  document.getElementById('qrImage').style.display = 'none';
+  document.getElementById('qrSpinner').style.display = 'flex';
+  document.getElementById('paidBtn').disabled = false;
+  document.getElementById('qrOverlay').classList.add('open');
+
+  try {
+    const res = await fetch('/user/payment-qr', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ amount: total, movie_title: '{{ show.movie_title }}', booking_ref: 'TMP' + Date.now() })
+    });
+    const d = await res.json();
+    document.getElementById('qrSpinner').style.display = 'none';
+    if (d.success && d.qr_image) document.getElementById('qrImage').src = d.qr_image;
+    document.getElementById('qrImage').style.display = 'block';
+  } catch {
+    document.getElementById('qrSpinner').style.display = 'none';
+    document.getElementById('qrImage').style.display = 'block';
+  }
+  startQRTimer(300);
+}
+
+function startQRTimer(secs) {
+  clearInterval(qrTimer);
+  let rem = secs;
+  const el = document.getElementById('qrCountdown');
+  function tick() {
+    const m = String(Math.floor(rem / 60)).padStart(2,'0');
+    const s = String(rem % 60).padStart(2,'0');
+    el.textContent = m + ':' + s;
+    if (rem-- <= 0) { clearInterval(qrTimer); el.textContent = 'Expired'; document.getElementById('paidBtn').disabled = true; }
+  }
+  tick(); qrTimer = setInterval(tick, 1000);
+}
+
+function closeQR() { clearInterval(qrTimer); document.getElementById('qrOverlay').classList.remove('open'); }
+
+async function confirmPayment() {
+  clearInterval(qrTimer);
+  document.getElementById('qrStep1').style.display = 'none';
+  document.getElementById('qrStep2').style.display = '';
+  await new Promise(r => setTimeout(r, 1600));
+  await doBook();
+}
+
+async function doBook() {
+  const seatNumbers = selectedSeats.map(s => s.seatId).join(', ');
+  const totalAmount = getTotalAmount();
+  stopLockCountdown();   // stop countdown — completing payment
+  try {
+    const res = await fetch(window.location.href, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ num_tickets: selectedSeats.length, payment_method: payMethod, seat_numbers: seatNumbers, total_amount: totalAmount })
+    });
+    const d = await res.json();
+    if (d.success) {
+      document.getElementById('qrStep2').style.display = 'none';
+      document.getElementById('qrStep3').style.display = '';
+      setTimeout(() => { document.getElementById('successBar').style.width = '100%'; }, 50);
+      setTimeout(() => { closeQR(); showConfirmModal(d); }, 2000);
+
+      // ── 3-HOUR AUTO-UNLOCK: after show ends (3h), release seats ──
+      // In real world: seats become available again after the movie ends.
+      // We schedule this client-side for demonstration; in production,
+      // a server-side cron job would handle this based on show start_time + duration.
+      scheduleShowEndUnlock(SHOW_ID, 3 * 60 * 60 * 1000); // 3 hours in ms
+    } else {
+      alert(d.message || 'Booking failed.');
+      closeQR();
+    }
+  } catch {
+    alert('Network error. Please try again.');
+    closeQR();
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   BOOKING CONFIRMATION MODAL
+═══════════════════════════════════════════════ */
+function showConfirmModal(d) {
+  document.getElementById('cfmRef').textContent     = d.booking_ref   || '—';
+  document.getElementById('cfmMovie').textContent   = d.movie_title   || '—';
+  document.getElementById('cfmTheatre').textContent = (d.theatre_name || '—') + (d.theatre_city ? ', ' + d.theatre_city : '');
+  document.getElementById('cfmDate').textContent    = d.show_date     || '—';
+  document.getElementById('cfmTime').textContent    = d.show_time     || '—';
+  document.getElementById('cfmSeats').textContent   = d.seat_numbers  || '—';
+  document.getElementById('cfmTickets').textContent = d.num_tickets   || '—';
+  document.getElementById('cfmPayment').textContent = d.payment_method|| '—';
+  document.getElementById('cfmTotal').textContent   = '₹' + (d.total_amount || 0);
+  document.getElementById('cfmPdfBtn').href         = d.pdf_url       || '#';
+  if (d.user_email) {
+    document.getElementById('cfmEmailAddr').textContent = d.user_email;
+    document.getElementById('cfmEmailNote').style.display = 'flex';
+  }
+  document.getElementById('confirmOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+document.getElementById('qrOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeQR();
+});
+
+/* ═══════════════════════════════════════════════
+   3-HOUR AUTO-UNLOCK: Release seats after show ends
+   Real-world: movie duration ≈ 2–3 hrs → seats free up.
+   We use the /seats/auto-unlock-after-show endpoint.
+═══════════════════════════════════════════════ */
+let showEndUnlockTimer = null;
+
+function scheduleShowEndUnlock(showId, delayMs) {
+  // Cancel any previously scheduled unlock for this show
+  if (showEndUnlockTimer) clearTimeout(showEndUnlockTimer);
+
+  console.log(`[CineBook] Seats will auto-release in ${delayMs / 3600000} hour(s) after show ends.`);
+
+  showEndUnlockTimer = setTimeout(async () => {
+    try {
+      const res = await fetch('/seats/auto-unlock-after-show', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ show_id: showId })
+      });
+      const d = await res.json();
+      if (d.success) {
+        console.log(`[CineBook] Show ended — ${d.seats_released} seat(s) released automatically.`);
+        // Refresh seat visuals if the user is still on the page
+        fetchSeatStatus();
+      }
+    } catch(e) {
+      console.warn('[CineBook] Auto-unlock failed (non-fatal):', e);
+    }
+  }, delayMs);
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+buildDates();
+startShowRefresh(); // auto-hide past shows every minute
+</script>
+
+<!-- BOOKING CONFIRMATION MODAL -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-modal">
+    <div class="cfm-header">
+      <div class="cfm-tick">🎉</div>
+      <h4>Booking Confirmed!</h4>
+      <p>Your tickets are booked. Enjoy the show!</p>
+    </div>
+    <div class="cfm-body">
+      <div class="cfm-ref-box">
+        <div class="cfm-ref-lbl">Booking Reference</div>
+        <div class="cfm-ref-code" id="cfmRef">—</div>
+      </div>
+      <table class="cfm-detail-table">
+        <tr><td class="clbl">🎬 Movie</td><td class="cval" id="cfmMovie">—</td></tr>
+        <tr><td class="clbl">🏢 Theatre</td><td class="cval" id="cfmTheatre">—</td></tr>
+        <tr><td class="clbl">📅 Date</td><td class="cval" id="cfmDate">—</td></tr>
+        <tr><td class="clbl">⏰ Time</td><td class="cval" id="cfmTime">—</td></tr>
+        <tr><td class="clbl">🪑 Seats</td><td class="cval" id="cfmSeats">—</td></tr>
+        <tr><td class="clbl">🎟 Tickets</td><td class="cval" id="cfmTickets">—</td></tr>
+        <tr><td class="clbl">💳 Payment</td><td class="cval" id="cfmPayment">—</td></tr>
+      </table>
+      <div class="cfm-total">
+        <span class="ctlbl">Total Paid</span>
+        <span class="ctamt" id="cfmTotal">₹0</span>
+      </div>
+
+      <!-- Email confirmation note — shown dynamically with the actual email -->
+      <div class="cfm-email-note" id="cfmEmailNote" style="display:none;">
+        <i class="fas fa-paper-plane" style="font-size:1.1rem;flex-shrink:0;"></i>
+        <div style="text-align:left;">
+          <div style="font-weight:800;font-size:.78rem;margin-bottom:2px;">Confirmation email sent!</div>
+          <div style="font-size:.72rem;opacity:.8;">Booking details &amp; e-ticket PDF sent to <strong id="cfmEmailAddr" style="color:#86efac;word-break:break-all;"></strong></div>
+        </div>
+      </div>
+
+      <div class="cfm-actions">
+        <a href="#" class="cfm-btn-pdf" id="cfmPdfBtn" download>
+          <i class="fas fa-file-pdf"></i> Download Ticket PDF
+        </a>
+        <a href="/" class="cfm-btn-home">
+          <i class="fas fa-home"></i> Back to Home
+        </a>
+        <a href="/user/bookings" class="cfm-btn-bkgs">
+          <i class="fas fa-ticket-alt"></i> My Bookings
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

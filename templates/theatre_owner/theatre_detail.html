@@ -1,0 +1,81 @@
+{% extends "theatre_owner/base_owner.html" %}
+{% block title %}{{ theatre.name if theatre else 'Theatre' }} – CineBook{% endblock %}
+{% block page_title %}Theatre Details{% endblock %}
+{% block content %}
+{% if theatre %}
+<div class="ph">
+  <div>
+    <h4>{{ theatre.name }}</h4>
+    <p><i class="fas fa-map-marker-alt text-danger me-1"></i>{{ theatre.city }}{% if theatre.state %}, {{ theatre.state }}{% endif %}</p>
+  </div>
+  <a href="{{ url_for('theatre_owner.my_theatres') }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<div class="row g-4">
+  <!-- Theatre Info -->
+  <div class="col-lg-4">
+    <div class="pcard mb-4">
+      <div class="pcard-head"><span><i class="fas fa-info-circle text-danger me-2"></i>Theatre Info</span></div>
+      <div class="pcard-body">
+        <div class="detail-row"><span class="lbl">Name</span><span class="val">{{ theatre.name }}</span></div>
+        <div class="detail-row"><span class="lbl">City</span><span class="val">{{ theatre.city or '—' }}</span></div>
+        <div class="detail-row"><span class="lbl">State</span><span class="val">{{ theatre.state or '—' }}</span></div>
+        <div class="detail-row"><span class="lbl">Location</span><span class="val small">{{ theatre.location or '—' }}</span></div>
+        <div class="detail-row"><span class="lbl">Screens</span><span class="val">{{ screens|length }}</span></div>
+      </div>
+    </div>
+
+    <div class="pcard">
+      <div class="pcard-head"><span><i class="fas fa-tv text-danger me-2"></i>Screens</span></div>
+      <div class="pcard-body p-0">
+        {% for sc in screens %}
+        <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+          <div>
+            <div class="fw-bold">Screen {{ sc.screen_number }}</div>
+            <div class="small text-muted">{{ sc.total_seats }} total seats</div>
+          </div>
+          <span class="bdg bdg-blue">{{ sc.show_count }} shows</span>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-3 small">No screens found</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Shows -->
+  <div class="col-lg-8">
+    <div class="pcard">
+      <div class="pcard-head"><span><i class="fas fa-calendar-alt text-danger me-2"></i>Recent Shows</span></div>
+      <div style="overflow-x:auto">
+        <table class="ptable">
+          <thead><tr><th>Movie</th><th>Screen</th><th>Date</th><th>Time</th><th>Price</th><th>Seats</th></tr></thead>
+          <tbody>
+            {% for s in shows %}
+            <tr>
+              <td class="fw-semibold small">{{ s.movie_title }}</td>
+              <td>#{{ s.screen_number }}</td>
+              <td>{{ s.show_date }}</td>
+              <td><span class="bdg bdg-yellow">{{ s.start_time }}</span></td>
+              <td class="text-danger fw-bold">₹{{ s.price_per_ticket|int if s.price_per_ticket else '—' }}</td>
+              <td>
+                {% if s.available_seats %}
+                  {% if s.available_seats > 20 %}<span class="bdg bdg-green">{{ s.available_seats }}</span>
+                  {% elif s.available_seats > 5 %}<span class="bdg bdg-yellow">{{ s.available_seats }}</span>
+                  {% else %}<span class="bdg bdg-red">{{ s.available_seats }}</span>{% endif %}
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center py-4 text-muted">No shows found</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="empty-state"><i class="fas fa-building"></i><h5>Theatre Not Found</h5><a href="{{ url_for('theatre_owner.my_theatres') }}" class="btn btn-danger mt-2">Back to Theatres</a></div>
+{% endif %}
+{% endblock %}

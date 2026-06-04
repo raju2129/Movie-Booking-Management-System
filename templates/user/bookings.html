@@ -1,0 +1,1014 @@
+{% extends "base.html" %}
+{% block title %}My Bookings – CineBook{% endblock %}
+
+{% block extra_css %}
+<style>
+/* =====================================================
+   MY BOOKINGS — FULL DARK CINEMA THEME
+===================================================== */
+:root {
+  --cb-red: #e5383b;
+  --cb-red2: #ff5e36;
+  --cb-red-glow: rgba(229,56,59,.35);
+  --cb-bg:  #06080f;
+  --cb-bg2: #0b0f1a;
+  --cb-bg3: #111827;
+  --cb-card: #141c2e;
+  --cb-card2: #1a2540;
+  --cb-border: rgba(255,255,255,.08);
+  --cb-border2: rgba(255,255,255,.13);
+  --cb-text: #f0f4ff;
+  --cb-muted: rgba(255,255,255,.45);
+  --cb-gold: #ffd60a;
+  --cb-green: #22c55e;
+  --cb-radius: 16px;
+}
+
+body { background: var(--cb-bg); }
+
+/* ── PAGE HEADER ── */
+.bk-hero {
+  background: linear-gradient(135deg,#0d0820 0%,#1a0f3c 50%,#06080f 100%);
+  border-bottom: 1px solid rgba(229,56,59,.2);
+  padding: 36px 0 28px;
+  position: relative;
+  overflow: hidden;
+}
+.bk-hero::before {
+  content:'';
+  position:absolute;inset:0;
+  background: radial-gradient(ellipse 60% 100% at 80% 50%,rgba(229,56,59,.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+.bk-hero h3 {
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0 0 6px;
+  letter-spacing: -.3px;
+}
+.bk-hero p { color: var(--cb-muted); margin: 0; font-size:.9rem; }
+
+/* ── STAT CHIPS ── */
+.bk-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.bk-stat {
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--cb-border2);
+  border-radius: 10px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .8rem;
+  color: var(--cb-muted);
+}
+.bk-stat strong { color: #fff; font-size: 1rem; font-weight: 800; }
+.bk-stat.green { border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.07); }
+.bk-stat.red   { border-color: rgba(229,56,59,.3); background: rgba(229,56,59,.07); }
+.bk-stat.gold  { border-color: rgba(255,214,10,.3); background: rgba(255,214,10,.07); }
+
+/* ── TABS ── */
+.bk-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 20px 0 0;
+  border-bottom: 2px solid var(--cb-border);
+  margin-bottom: 28px;
+}
+.bk-tab {
+  padding: 10px 22px;
+  border-radius: 10px 10px 0 0;
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--cb-muted);
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  position: relative;
+  bottom: -2px;
+}
+.bk-tab:hover { color: #fff; background: rgba(255,255,255,.05); }
+.bk-tab.active {
+  color: #fff;
+  background: var(--cb-card);
+  border: 2px solid var(--cb-border2);
+  border-bottom: 2px solid var(--cb-card);
+}
+.bk-tab.active .tab-dot { background: var(--cb-red); }
+.tab-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.2);
+}
+.tab-cnt {
+  background: rgba(255,255,255,.1);
+  border-radius: 20px;
+  padding: 1px 7px;
+  font-size: .65rem;
+  font-weight: 800;
+}
+.bk-tab.active .tab-cnt { background: var(--cb-red); color: #fff; }
+
+/* ── BOOKING CARD ── */
+.bk-card {
+  background: var(--cb-card);
+  border: 1px solid var(--cb-border);
+  border-radius: var(--cb-radius);
+  padding: 20px 24px;
+  margin-bottom: 14px;
+  border-left: 4px solid var(--cb-red);
+  transition: transform .25s, box-shadow .25s, border-color .25s;
+  position: relative;
+  overflow: hidden;
+}
+.bk-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 220px; height: 100%;
+  background: radial-gradient(ellipse at top right, rgba(229,56,59,.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.bk-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(229,56,59,.15);
+}
+.bk-card.cancelled {
+  border-left-color: rgba(255,255,255,.2);
+  opacity: .72;
+}
+.bk-card.cancelled::before { display: none; }
+.bk-card.past { border-left-color: rgba(96,165,250,.5); }
+.bk-card.past::before {
+  background: radial-gradient(ellipse at top right, rgba(96,165,250,.05) 0%, transparent 70%);
+}
+
+/* ── MOVIE ICON ── */
+.bk-movie-ico {
+  width: 52px; height: 52px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(229,56,59,.25), rgba(229,56,59,.08));
+  border: 1px solid rgba(229,56,59,.25);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cb-red);
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+.bk-card.past .bk-movie-ico {
+  background: linear-gradient(135deg, rgba(96,165,250,.2), rgba(96,165,250,.06));
+  border-color: rgba(96,165,250,.25);
+  color: #60a5fa;
+}
+.bk-card.cancelled .bk-movie-ico {
+  background: rgba(255,255,255,.05);
+  border-color: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.3);
+}
+
+/* ── CARD TEXT ── */
+.bk-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 3px;
+}
+.bk-subtitle {
+  font-size: .78rem;
+  color: var(--cb-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── DARK BADGES ── */
+.dk-bdg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: .7rem;
+  font-weight: 700;
+}
+.dk-bdg-yellow { background: rgba(255,214,10,.1); color: var(--cb-gold); border: 1px solid rgba(255,214,10,.2); }
+.dk-bdg-blue   { background: rgba(96,165,250,.1); color: #60a5fa;       border: 1px solid rgba(96,165,250,.2); }
+.dk-bdg-gray   { background: rgba(255,255,255,.06); color: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.1); }
+.dk-bdg-purple { background: rgba(139,92,246,.12); color: #a78bfa;      border: 1px solid rgba(139,92,246,.25); }
+.dk-bdg-green  { background: rgba(34,197,94,.12);  color: #4ade80;       border: 1px solid rgba(34,197,94,.25); }
+.dk-bdg-red    { background: rgba(229,56,59,.12);  color: #f87171;       border: 1px solid rgba(229,56,59,.25); }
+
+/* ── BOOKING REF BOX ── */
+.bk-ref-box {
+  text-align: right;
+  flex-shrink: 0;
+}
+.bk-ref-label {
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--cb-muted);
+  margin-bottom: 3px;
+}
+.bk-ref-code {
+  font-family: 'Courier New', monospace;
+  font-size: .9rem;
+  font-weight: 800;
+  color: var(--cb-red);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.bk-date-small { font-size: .65rem; color: rgba(255,255,255,.3); }
+
+/* ── CANCEL BUTTON ── */
+.btn-cancel-bk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(229,56,59,.1);
+  border: 1.5px solid rgba(229,56,59,.3);
+  color: #f87171;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: 8px;
+  text-decoration: none;
+}
+.btn-cancel-bk:hover {
+  background: rgba(229,56,59,.22);
+  border-color: var(--cb-red);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(229,56,59,.3);
+}
+.btn-cancel-bk.show-started {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.25);
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+.show-started-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .72rem;
+  font-weight: 700;
+  color: rgba(255,255,255,.28);
+  background: rgba(255,255,255,.04);
+  border: 1.5px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  padding: 9px 13px;
+  margin-top: 8px;
+  letter-spacing: .3px;
+}
+.btn-view-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(96,165,250,.1);
+  border: 1.5px solid rgba(96,165,250,.3);
+  color: #60a5fa;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: 8px;
+  text-decoration: none;
+}
+.btn-view-details:hover {
+  background: rgba(96,165,250,.22);
+  border-color: #60a5fa;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(96,165,250,.3);
+}
+
+/* ── TICKET DETAIL MODAL ── */
+.ticket-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(6px);
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.ticket-overlay.open { display: flex; animation: cfmBgIn .25s ease; }
+.ticket-modal {
+  background: var(--cb-card);
+  border: 1px solid var(--cb-border2);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 500px;
+  overflow: hidden;
+  animation: cfmBgIn .3s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.ticket-modal-header {
+  background: linear-gradient(135deg,#e5383b,#a00);
+  padding: 24px;
+  text-align: center;
+  position: relative;
+}
+.ticket-modal-header h4 { color: #fff; font-weight: 900; margin: 0 0 4px; font-size: 1.2rem; }
+.ticket-modal-header p { color: rgba(255,255,255,.7); font-size: .82rem; margin: 0; }
+.ticket-close-btn {
+  position: absolute; top: 14px; right: 16px;
+  background: rgba(255,255,255,.15); border: none; color: #fff;
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  font-size: .85rem; display: flex; align-items: center; justify-content: center;
+}
+.ticket-close-btn:hover { background: rgba(255,255,255,.3); }
+.ticket-modal-body { padding: 24px; }
+.ticket-ref-box {
+  background: linear-gradient(135deg,#1a1200,#2a1f00);
+  border: 2px dashed #ffd60a;
+  border-radius: 12px;
+  padding: 14px 18px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.ticket-ref-lbl { color: #8899bb; font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+.ticket-ref-code { color: #ffd60a; font-size: 1.6rem; font-weight: 900; letter-spacing: 4px; }
+.ticket-dtbl { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+.ticket-dtbl tr td { padding: 10px 2px; border-bottom: 1px solid rgba(255,255,255,.06); font-size: .84rem; }
+.ticket-dtbl tr:last-child td { border-bottom: none; }
+.ticket-dtbl td.lbl { color: #8899bb; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; width: 42%; }
+.ticket-dtbl td.val { color: #f0f4ff; font-weight: 700; text-align: right; }
+.ticket-total-row {
+  background: rgba(229,56,59,.1); border: 1px solid rgba(229,56,59,.3);
+  border-radius: 10px; padding: 12px 18px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px;
+}
+.ticket-total-row .tl { color: #8899bb; font-size: .8rem; font-weight: 700; text-transform: uppercase; }
+.ticket-total-row .ta { color: #e5383b; font-size: 1.4rem; font-weight: 900; }
+.ticket-modal-actions { display: flex; flex-direction: column; gap: 9px; }
+.btn-ticket-dl { background: linear-gradient(135deg,#e5383b,#c00); color: #fff; border: none; padding: 13px 16px; border-radius: 11px; font-size: .88rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; transition: all .22s; }
+.btn-ticket-dl:hover { color: #fff; transform: translateY(-2px); box-shadow: 0 8px 22px rgba(229,56,59,.4); }
+.btn-ticket-cancel { background: rgba(229,56,59,.08); border: 1.5px solid rgba(229,56,59,.3); color: #f87171; padding: 11px 16px; border-radius: 10px; font-size: .84rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all .2s; }
+.btn-ticket-cancel:hover { background: rgba(229,56,59,.2); color: #fff; }
+.ticket-status-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: 20px; font-size: .75rem; font-weight: 800;
+  margin-bottom: 14px;
+}
+.ticket-status-badge.confirmed { background: rgba(34,197,94,.1); color: #22c55e; border: 1px solid rgba(34,197,94,.3); }
+.ticket-status-badge.cancelled { background: rgba(229,56,59,.1); color: #f87171; border: 1px solid rgba(229,56,59,.3); }
+
+/* ── EMPTY STATE ── */
+.bk-empty {
+  text-align: center;
+  padding: 72px 20px;
+  color: var(--cb-muted);
+}
+.bk-empty-ico {
+  width: 80px; height: 80px;
+  background: rgba(255,255,255,.04);
+  border: 1.5px dashed rgba(255,255,255,.12);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 2rem;
+  color: rgba(255,255,255,.18);
+}
+.bk-empty h5 { font-size: 1rem; font-weight: 800; color: rgba(255,255,255,.55); margin-bottom: 8px; }
+.bk-empty p  { font-size: .85rem; color: var(--cb-muted); margin-bottom: 20px; }
+
+/* ── BROWSE BTN ── */
+.btn-browse {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--cb-red), #c00);
+  color: #fff;
+  border: none;
+  padding: 11px 24px;
+  border-radius: 10px;
+  font-size: .88rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all .2s;
+  box-shadow: 0 4px 18px var(--cb-red-glow);
+}
+.btn-browse:hover { color: #fff; transform: translateY(-2px); box-shadow: 0 8px 24px var(--cb-red-glow); }
+
+/* ── CANCEL CONFIRM MODAL ── */
+.cancel-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,.88);
+  backdrop-filter: blur(10px);
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.cancel-overlay.open { display: flex; animation: cfmBgIn .25s ease; }
+@keyframes cfmBgIn { from{opacity:0} to{opacity:1} }
+
+.cancel-modal {
+  background: var(--cb-card);
+  border: 1px solid rgba(229,56,59,.25);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  animation: cfmUp .35s cubic-bezier(.34,1.56,.64,1);
+  box-shadow: 0 30px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(229,56,59,.15);
+}
+@keyframes cfmUp { from{transform:translateY(50px) scale(.93);opacity:0} to{transform:none;opacity:1} }
+
+.cancel-modal-header {
+  background: linear-gradient(135deg,#1a0608,#2e0a0c,#180000);
+  padding: 28px 28px 22px;
+  text-align: center;
+  position: relative;
+  border-bottom: 1px solid rgba(229,56,59,.15);
+}
+.cancel-warn-ico {
+  width: 64px; height: 64px;
+  background: rgba(229,56,59,.15);
+  border: 2px solid rgba(229,56,59,.35);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 14px;
+  font-size: 1.6rem;
+  color: #f87171;
+  animation: warnPulse 2s ease infinite;
+}
+@keyframes warnPulse { 0%,100%{box-shadow:0 0 0 0 rgba(229,56,59,.3)} 50%{box-shadow:0 0 0 10px rgba(229,56,59,0)} }
+.cancel-modal-header h4 { color: #fff; font-weight: 900; margin: 0 0 5px; font-size: 1.15rem; }
+.cancel-modal-header p  { color: rgba(255,255,255,.5); font-size: .82rem; margin: 0; }
+
+.cancel-modal-body { padding: 22px 24px 24px; }
+
+.cancel-booking-preview {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--cb-border2);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.cancel-preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: .82rem;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  color: var(--cb-muted);
+}
+.cancel-preview-row:last-child { border-bottom: none; }
+.cancel-preview-row strong { color: #fff; text-align: right; max-width: 60%; }
+
+.cancel-warning-note {
+  background: rgba(229,56,59,.08);
+  border: 1px solid rgba(229,56,59,.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: .78rem;
+  color: rgba(255,180,180,.8);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.5;
+}
+.cancel-warning-note i { color: var(--cb-red); margin-top: 1px; flex-shrink: 0; }
+
+.cancel-modal-actions { display: flex; flex-direction: column; gap: 9px; }
+
+.btn-confirm-cancel {
+  width: 100%;
+  padding: 13px 16px;
+  background: linear-gradient(135deg,#e5383b,#c00);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: .92rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .22s;
+  box-shadow: 0 4px 18px rgba(229,56,59,.35);
+}
+.btn-confirm-cancel:hover { transform: translateY(-2px); box-shadow: 0 8px 26px rgba(229,56,59,.5); }
+.btn-confirm-cancel:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+.btn-keep-booking {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255,255,255,.06);
+  border: 1.5px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.7);
+  border-radius: 12px;
+  font-size: .86rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .2s;
+}
+.btn-keep-booking:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+/* ── SUCCESS TOAST ── */
+#bkToastBox {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--cb-bg2); }
+::-webkit-scrollbar-thumb { background: var(--cb-red); border-radius: 4px; }
+
+@media(max-width:576px) {
+  .bk-card { padding: 16px; }
+  .bk-ref-box { text-align: left; }
+  .bk-hero h3 { font-size: 1.4rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background:var(--cb-bg);min-height:100vh;">
+
+<!-- ── PAGE HERO ── -->
+<div class="bk-hero">
+  <div class="container">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h3><i class="fas fa-ticket-alt" style="color:var(--cb-red);margin-right:10px;"></i>My Bookings</h3>
+        <p>Manage all your CineBook ticket reservations</p>
+        <div class="bk-stats">
+          <div class="bk-stat gold"><i class="fas fa-ticket-alt"></i>{{ bookings|length }} {{ tab|title }}</div>
+          {% if tab == 'upcoming' %}
+          <div class="bk-stat green"><i class="fas fa-check-circle"></i>Active reservations</div>
+          {% elif tab == 'cancelled' %}
+          <div class="bk-stat red"><i class="fas fa-times-circle"></i>Cancelled tickets</div>
+          {% endif %}
+        </div>
+      </div>
+      <a href="{{ url_for('public.home') }}"
+         style="display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.13);color:rgba(255,255,255,.7);padding:9px 18px;border-radius:10px;font-size:.82rem;font-weight:700;text-decoration:none;transition:all .2s;"
+         onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,.13)'"
+         onmouseout="this.style.color='rgba(255,255,255,.7)';this.style.background='rgba(255,255,255,.07)'">
+        <i class="fas fa-film"></i> Browse Movies
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ── TABS ── -->
+<div class="container">
+  <div class="bk-tabs">
+    <a href="{{ url_for('user.my_bookings', tab='upcoming') }}"
+       class="bk-tab {% if tab=='upcoming' %}active{% endif %}">
+      <span class="tab-dot"></span>
+      <i class="fas fa-calendar-check"></i> Upcoming
+      <span class="tab-cnt">{{ upcoming_count }}</span>
+    </a>
+    <a href="{{ url_for('user.my_bookings', tab='past') }}"
+       class="bk-tab {% if tab=='past' %}active{% endif %}">
+      <span class="tab-dot"></span>
+      <i class="fas fa-history"></i> Past
+      <span class="tab-cnt">{{ past_count }}</span>
+    </a>
+    <a href="{{ url_for('user.my_bookings', tab='cancelled') }}"
+       class="bk-tab {% if tab=='cancelled' %}active{% endif %}">
+      <span class="tab-dot"></span>
+      <i class="fas fa-times-circle"></i> Cancelled
+      <span class="tab-cnt">{{ cancelled_count }}</span>
+    </a>
+    <a href="{{ url_for('user.my_bookings', tab='all') }}"
+       class="bk-tab {% if tab=='all' %}active{% endif %}">
+      <span class="tab-dot"></span>
+      <i class="fas fa-list"></i> All
+      <span class="tab-cnt">{{ all_count }}</span>
+    </a>
+  </div>
+
+  <!-- ── BOOKING CARDS ── -->
+  {% if bookings %}
+    {% for b in bookings %}
+    <div class="bk-card {% if b.status=='Cancelled' %}cancelled{% elif tab=='past' %}past{% endif %}" id="bkcard-{{ b.id }}">
+      <div class="d-flex align-items-start gap-3 flex-wrap">
+
+        <!-- Icon -->
+        <div class="bk-movie-ico"><i class="fas fa-film"></i></div>
+
+        <!-- Details -->
+        <div class="flex-grow-1">
+          <div class="bk-title">{{ b.movie_title }}</div>
+          <div class="bk-subtitle">
+            <i class="fas fa-building"></i>{{ b.theatre_name }},&nbsp;{{ b.theatre_city }}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+            <span class="dk-bdg dk-bdg-yellow"><i class="fas fa-calendar"></i>{{ b.show_date }}</span>
+            <span class="dk-bdg dk-bdg-blue"><i class="fas fa-clock"></i>{{ b.show_time }}</span>
+            <span class="dk-bdg dk-bdg-gray"><i class="fas fa-ticket-alt"></i>{{ b.num_tickets }} Ticket(s)</span>
+            {% if b.seat_numbers %}
+            <span class="dk-bdg dk-bdg-purple"><i class="fas fa-chair"></i>{{ b.seat_numbers }}</span>
+            {% endif %}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <span style="font-size:1.05rem;font-weight:900;color:var(--cb-red);">&#8377;{{ b.total_amount|int }}</span>
+            <span class="dk-bdg {% if b.status=='Confirmed' %}dk-bdg-green{% else %}dk-bdg-red{% endif %}">
+              <i class="fas {% if b.status=='Confirmed' %}fa-check-circle{% else %}fa-times-circle{% endif %}"></i>
+              {{ b.status }}
+            </span>
+            <span style="color:rgba(255,255,255,.3);font-size:.72rem;">via {{ b.payment_method }}</span>
+          </div>
+        </div>
+
+        <!-- Ref + Cancel -->
+        <div class="bk-ref-box">
+          <div class="bk-ref-label">Booking Ref</div>
+          <div class="bk-ref-code">{{ b.booking_ref }}</div>
+          <div class="bk-date-small">
+            {{ b.booked_at.strftime('%d %b %Y, %H:%M') if b.booked_at else '' }}
+          </div>
+          <button class="btn-view-details"
+            onclick="openTicketModal({{ b.id }}, '{{ b.movie_title|e }}', '{{ b.theatre_name|e }}', '{{ b.theatre_city|e }}', '{{ b.show_date }}', '{{ b.show_time }}', {{ b.num_tickets }}, {{ b.total_amount|int }}, '{{ b.booking_ref }}', '{{ b.status }}', '{{ b.payment_method|e }}', '{{ b.seat_numbers|e if b.seat_numbers else '' }}', '{{ b.booked_at.strftime('%d %b %Y, %H:%M') if b.booked_at else '' }}')">
+            <i class="fas fa-eye"></i> View Details
+          </button>
+          {% if b.status == 'Confirmed' and (tab == 'upcoming' or tab == 'all') and (b.show_date is none or b.show_date >= today) %}
+            {% set show_datetime_str = (b.show_date|string + ' ' + b.show_time|string) if b.show_date and b.show_time else '' %}
+            <button class="btn-cancel-bk"
+              id="cancelbtn-{{ b.id }}"
+              data-show-date="{{ b.show_date }}"
+              data-show-time="{{ b.show_time }}"
+              onclick="handleCancelClick(this, {{ b.id }}, '{{ b.movie_title|e }}', '{{ b.booking_ref }}', '{{ b.show_date }}', '{{ b.show_time }}', {{ b.num_tickets }}, {{ b.total_amount|int }})">
+              <i class="fas fa-times-circle"></i> Cancel Ticket
+            </button>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+
+  {% else %}
+  <div class="bk-empty">
+    <div class="bk-empty-ico">
+      <i class="fas fa-{% if tab=='upcoming' %}calendar-check{% elif tab=='past' %}history{% elif tab=='cancelled' %}times-circle{% else %}list{% endif %}"></i>
+    </div>
+    <h5>No {% if tab=='all' %}Bookings{% else %}{{ tab|title }} Bookings{% endif %}</h5>
+    {% if tab == 'upcoming' %}
+      <p>You haven't booked any upcoming shows yet.</p>
+      <a href="{{ url_for('public.home') }}" class="btn-browse"><i class="fas fa-film"></i> Browse Movies</a>
+    {% elif tab == 'past' %}
+      <p>Your past bookings will appear here.</p>
+    {% elif tab == 'cancelled' %}
+      <p>No cancelled bookings found.</p>
+    {% else %}
+      <p>You haven't made any bookings yet.</p>
+      <a href="{{ url_for('public.home') }}" class="btn-browse"><i class="fas fa-film"></i> Browse Movies</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div><!-- /container -->
+
+<!-- ═══════════════════════════════════════
+     TICKET DETAIL MODAL
+═══════════════════════════════════════ -->
+<div class="ticket-overlay" id="ticketOverlay">
+  <div class="ticket-modal">
+    <div class="ticket-modal-header">
+      <button class="ticket-close-btn" onclick="closeTicketModal()"><i class="fas fa-times"></i></button>
+      <div style="font-size:2rem;margin-bottom:8px;">🎬</div>
+      <h4 id="tm-movie-title">Movie Title</h4>
+      <p id="tm-theatre-city">Theatre · City</p>
+    </div>
+    <div class="ticket-modal-body">
+      <div style="text-align:center;margin-bottom:14px;">
+        <span class="ticket-status-badge" id="tm-status-badge"><i class="fas fa-check-circle"></i> <span id="tm-status-text">Confirmed</span></span>
+      </div>
+      <div class="ticket-ref-box">
+        <div class="ticket-ref-lbl">Booking Reference</div>
+        <div class="ticket-ref-code" id="tm-ref">—</div>
+      </div>
+      <table class="ticket-dtbl">
+        <tr><td class="lbl">📅 Show Date</td><td class="val" id="tm-date">—</td></tr>
+        <tr><td class="lbl">⏰ Show Time</td><td class="val" id="tm-time">—</td></tr>
+        <tr><td class="lbl">🎟 Tickets</td><td class="val" id="tm-tickets">—</td></tr>
+        <tr><td class="lbl">🪑 Seats</td><td class="val" id="tm-seats">—</td></tr>
+        <tr><td class="lbl">💳 Payment</td><td class="val" id="tm-payment">—</td></tr>
+        <tr><td class="lbl">📆 Booked On</td><td class="val" id="tm-booked-at">—</td></tr>
+      </table>
+      <div class="ticket-total-row">
+        <span class="tl">Total Paid</span>
+        <span class="ta" id="tm-amount">—</span>
+      </div>
+      <div class="ticket-modal-actions" id="tm-actions">
+        <!-- Buttons injected by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     CANCEL CONFIRMATION MODAL
+═══════════════════════════════ -->
+<div class="cancel-overlay" id="cancelOverlay">
+  <div class="cancel-modal">
+    <div class="cancel-modal-header">
+      <div class="cancel-warn-ico"><i class="fas fa-exclamation-triangle"></i></div>
+      <h4>Cancel Booking?</h4>
+      <p>This action is permanent and cannot be undone</p>
+    </div>
+    <div class="cancel-modal-body">
+      <!-- Booking Preview -->
+      <div class="cancel-booking-preview">
+        <div class="cancel-preview-row">
+          <span>Movie</span>
+          <strong id="cm-movie">—</strong>
+        </div>
+        <div class="cancel-preview-row">
+          <span>Booking Ref</span>
+          <strong id="cm-ref" style="color:var(--cb-red);font-family:monospace;">—</strong>
+        </div>
+        <div class="cancel-preview-row">
+          <span>Show Date</span>
+          <strong id="cm-date">—</strong>
+        </div>
+        <div class="cancel-preview-row">
+          <span>Show Time</span>
+          <strong id="cm-time">—</strong>
+        </div>
+        <div class="cancel-preview-row">
+          <span>Tickets</span>
+          <strong id="cm-tickets">—</strong>
+        </div>
+        <div class="cancel-preview-row" style="border-bottom:none;">
+          <span>Amount Paid</span>
+          <strong id="cm-amount" style="color:var(--cb-red);">—</strong>
+        </div>
+      </div>
+
+      <!-- Warning Note -->
+      <div class="cancel-warning-note">
+        <i class="fas fa-info-circle"></i>
+        <span>Once cancelled, your seats will be released and this booking cannot be restored. Refund processing time may vary by payment method.</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="cancel-modal-actions">
+        <button class="btn-confirm-cancel" id="confirmCancelBtn" onclick="doCancel()">
+          <i class="fas fa-times-circle"></i> Yes, Cancel My Booking
+        </button>
+        <button class="btn-keep-booking" onclick="closeCancelModal()">
+          <i class="fas fa-arrow-left"></i> No, Keep My Booking
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast box -->
+<div id="bkToastBox"></div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ═══════════════════════════════════════════
+   TICKET DETAIL MODAL
+═══════════════════════════════════════════ */
+function openTicketModal(id, movie, theatre, city, date, time, tickets, amount, ref, status, payment, seats, bookedAt) {
+  document.getElementById('tm-movie-title').textContent = movie;
+  document.getElementById('tm-theatre-city').textContent = theatre + ' · ' + city;
+  document.getElementById('tm-ref').textContent = ref;
+  document.getElementById('tm-date').textContent = date;
+  document.getElementById('tm-time').textContent = time;
+  document.getElementById('tm-tickets').textContent = tickets + ' Ticket(s)';
+  document.getElementById('tm-seats').textContent = seats || '—';
+  document.getElementById('tm-payment').textContent = payment;
+  document.getElementById('tm-booked-at').textContent = bookedAt || '—';
+  document.getElementById('tm-amount').textContent = '₹' + amount;
+
+  const badge = document.getElementById('tm-status-badge');
+  const badgeTxt = document.getElementById('tm-status-text');
+  badge.className = 'ticket-status-badge ' + (status === 'Confirmed' ? 'confirmed' : 'cancelled');
+  badge.querySelector('i').className = 'fas ' + (status === 'Confirmed' ? 'fa-check-circle' : 'fa-times-circle');
+  badgeTxt.textContent = status;
+
+  const actionsDiv = document.getElementById('tm-actions');
+  let actionsHTML = `<a href="/user/booking/${id}/download-pdf" class="btn-ticket-dl" download>
+      <i class="fas fa-file-pdf"></i> Download Ticket PDF
+    </a>`;
+  if (status === 'Confirmed') {
+    const safeMovie = movie.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    actionsHTML += `<button class="btn-ticket-cancel" onclick="closeTicketModal(); openCancelModal(${id}, '${safeMovie}', '${ref}', '${date}', '${time}', ${tickets}, ${amount});">
+        <i class="fas fa-times-circle"></i> Cancel This Booking
+      </button>`;
+  }
+  actionsDiv.innerHTML = actionsHTML;
+
+  document.getElementById('ticketOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeTicketModal() {
+  document.getElementById('ticketOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('ticketOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeTicketModal();
+});
+
+/* ═══════════════════════════════════════════
+   CANCEL MODAL
+═══════════════════════════════════════════ */
+let _cancelId = null;
+
+/* Parse "HH:MM:SS", "HH:MM", or "HH:MM AM/PM" → minutes since midnight */
+function parseShowMinutes(timeStr) {
+  if (!timeStr) return null;
+  timeStr = timeStr.trim();
+  const hms = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (hms) return parseInt(hms[1]) * 60 + parseInt(hms[2]);
+  const ampm = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (ampm) {
+    let h = parseInt(ampm[1]);
+    const m = parseInt(ampm[2]);
+    if (ampm[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    if (ampm[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+  return null;
+}
+
+/* Returns true if the show date+time is in the past */
+function isShowAlreadyPast(showDateStr, showTimeStr) {
+  if (!showDateStr || !showTimeStr) return false;
+  const now = new Date();
+  const todayIso = now.toISOString().split('T')[0];
+  if (showDateStr > todayIso) return false;   // future date → not past
+  if (showDateStr < todayIso) return true;    // past date → always past
+  // Same day → compare time
+  const showMins = parseShowMinutes(showTimeStr);
+  if (showMins === null) return false;
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  return nowMins >= showMins;
+}
+
+/* Called when user clicks Cancel Ticket button */
+function handleCancelClick(btn, id, movie, ref, date, time, tickets, amount) {
+  if (isShowAlreadyPast(date, time)) {
+    // Visually disable the button and show friendly message
+    btn.classList.add('show-started');
+    btn.innerHTML = '<i class="fas fa-lock"></i> Cannot Cancel';
+    showToast('This show has already started. Cancellation is not allowed.', 'error');
+    return;
+  }
+  openCancelModal(id, movie, ref, date, time, tickets, amount);
+}
+
+/* On page load: disable cancel buttons for shows that have already started */
+(function applyPastShowLocks() {
+  document.querySelectorAll('.btn-cancel-bk[data-show-date]').forEach(btn => {
+    const d = btn.dataset.showDate;
+    const t = btn.dataset.showTime;
+    if (isShowAlreadyPast(d, t)) {
+      btn.classList.add('show-started');
+      btn.innerHTML = '<i class="fas fa-lock"></i> Cannot Cancel';
+    }
+  });
+})();
+
+function openCancelModal(id, movie, ref, date, time, tickets, amount) {
+  _cancelId = id;
+  document.getElementById('cm-movie').textContent   = movie;
+  document.getElementById('cm-ref').textContent     = ref;
+  document.getElementById('cm-date').textContent    = date;
+  document.getElementById('cm-time').textContent    = time;
+  document.getElementById('cm-tickets').textContent = tickets + ' Ticket(s)';
+  document.getElementById('cm-amount').textContent  = '₹' + amount;
+  document.getElementById('confirmCancelBtn').disabled = false;
+  document.getElementById('confirmCancelBtn').innerHTML =
+    '<i class="fas fa-times-circle"></i> Yes, Cancel My Booking';
+  document.getElementById('cancelOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCancelModal() {
+  document.getElementById('cancelOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  _cancelId = null;
+}
+
+// Close on backdrop click
+document.getElementById('cancelOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeCancelModal();
+});
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeCancelModal(); closeTicketModal(); }
+});
+
+async function doCancel() {
+  if (!_cancelId) return;
+  const btn = document.getElementById('confirmCancelBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Cancelling…';
+
+  try {
+    const res = await fetch(`/user/booking/${_cancelId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const d = await res.json();
+
+    if (d.success) {
+      closeCancelModal();
+      showToast('Booking cancelled successfully.', 'success');
+      // Animate card out
+      const card = document.getElementById('bkcard-' + _cancelId);
+      if (card) {
+        card.style.transition = 'opacity .5s ease, transform .5s ease, max-height .5s ease, margin .5s ease, padding .5s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(-30px)';
+        card.style.maxHeight = card.offsetHeight + 'px';
+        setTimeout(() => {
+          card.style.maxHeight = '0';
+          card.style.marginBottom = '0';
+          card.style.paddingTop = '0';
+          card.style.paddingBottom = '0';
+        }, 400);
+        setTimeout(() => {
+          card.remove();
+          // If no more cards, reload to show empty state
+          if (!document.querySelector('.bk-card')) location.reload();
+        }, 900);
+      }
+    } else {
+      showToast(d.message || 'Cancellation failed.', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-times-circle"></i> Yes, Cancel My Booking';
+    }
+  } catch {
+    showToast('Network error. Please try again.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-times-circle"></i> Yes, Cancel My Booking';
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TOAST NOTIFICATIONS
+═══════════════════════════════════════════ */
+function showToast(msg, type) {
+  const box = document.getElementById('bkToastBox');
+  const id  = 'bt' + Date.now();
+  const colors = { success: 'linear-gradient(135deg,#15803d,#166534)', error: 'linear-gradient(135deg,#e5383b,#c00)' };
+  const icons  = { success: 'fa-check-circle', error: 'fa-exclamation-circle' };
+  box.insertAdjacentHTML('beforeend', `
+    <div id="${id}" style="
+      background:${colors[type]||colors.error};
+      color:#fff;padding:14px 18px;border-radius:12px;
+      box-shadow:0 8px 28px rgba(0,0,0,.5);
+      display:flex;align-items:center;gap:10px;
+      font-size:.88rem;font-weight:600;min-width:280px;
+      animation:toastIn .3s cubic-bezier(.34,1.56,.64,1);">
+      <i class="fas ${icons[type]||icons.error}" style="font-size:1rem;"></i>
+      <span style="flex:1">${msg}</span>
+      <button onclick="document.getElementById('${id}').remove()"
+        style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:1.1rem;padding:0;">&times;</button>
+    </div>`);
+  const style = document.createElement('style');
+  style.textContent = '@keyframes toastIn{from{transform:translateY(20px) scale(.9);opacity:0}to{transform:none;opacity:1}}';
+  document.head.appendChild(style);
+  setTimeout(() => { const el = document.getElementById(id); if(el) el.style.opacity='0', setTimeout(()=>el.remove(),300); }, 5000);
+}
+</script>
+{% endblock %}

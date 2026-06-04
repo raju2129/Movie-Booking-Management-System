@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block title %}My Account – CineBook{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════════════════════════════════════
+   ACCOUNT PAGE — FULL DARK CINEMA THEME
+══════════════════════════════════════════ */
+:root {
+  --acc-bg:     #06080f;
+  --acc-bg2:    #0b0f1a;
+  --acc-card:   #141c2e;
+  --acc-border: rgba(255,255,255,.08);
+  --acc-red:    #e5383b;
+  --acc-text:   #f0f4ff;
+  --acc-muted:  rgba(255,255,255,.5);
+  --acc-input:  #1a2236;
+}
+body { background: var(--acc-bg) !important; color: var(--acc-text) !important; }
+
+/* HERO */
+.acc-hero {
+  position: relative;
+  background: linear-gradient(135deg, #100020 0%, #0b0f1a 50%, #06080f 100%);
+  border-bottom: 1px solid var(--acc-border);
+  padding: 48px 0 40px;
+  overflow: hidden;
+}
+.acc-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(229,56,59,.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+.acc-hero-inner { position: relative; display: flex; align-items: center; gap: 24px; }
+.acc-avatar {
+  width: 88px; height: 88px; border-radius: 50%;
+  background: linear-gradient(135deg, #e5383b, #8b0000);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.2rem; font-weight: 900; color: #fff; flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(229,56,59,.25), 0 8px 32px rgba(229,56,59,.3);
+}
+.acc-hero-name { font-size: 1.6rem; font-weight: 900; color: #fff; margin: 0 0 4px; }
+.acc-hero-email { font-size: .9rem; color: var(--acc-muted); margin: 0 0 10px; }
+.acc-hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(229,56,59,.18); border: 1px solid rgba(229,56,59,.35);
+  color: #ff7b7e; font-size: .72rem; font-weight: 800;
+  padding: 4px 12px; border-radius: 20px; letter-spacing: .5px; text-transform: uppercase;
+}
+
+/* TABS */
+.acc-tabs-wrap { background: var(--acc-bg2); border-bottom: 1px solid var(--acc-border); position: sticky; top: 0; z-index: 50; }
+.acc-tabs { display: flex; overflow-x: auto; scrollbar-width: none; }
+.acc-tabs::-webkit-scrollbar { display: none; }
+.acc-tab {
+  flex: 0 0 auto; padding: 15px 24px;
+  font-size: .83rem; font-weight: 700; color: var(--acc-muted);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  border-top: none; border-left: none; border-right: none;
+  background: none; transition: all .2s; white-space: nowrap;
+  display: flex; align-items: center; gap: 7px;
+}
+.acc-tab:hover { color: #fff; }
+.acc-tab.active { color: var(--acc-red); border-bottom-color: var(--acc-red); }
+
+/* BODY */
+.acc-body { background: var(--acc-bg); min-height: 60vh; padding: 36px 0 60px; }
+.acc-panel { display: none; }
+.acc-panel.active { display: block; }
+
+/* CARDS */
+.acc-card { background: var(--acc-card); border: 1px solid var(--acc-border); border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+.acc-card-head { display: flex; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--acc-border); background: rgba(255,255,255,.02); }
+.acc-card-title { font-size: .92rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 9px; }
+.acc-card-title i { color: var(--acc-red); }
+.acc-card-body { padding: 22px; }
+
+/* FORM */
+.acc-label { font-size: .78rem; font-weight: 700; color: var(--acc-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px; display: block; }
+.acc-input {
+  width: 100%; background: var(--acc-input) !important;
+  border: 1.5px solid rgba(255,255,255,.12) !important;
+  border-radius: 10px !important; color: #fff !important;
+  padding: 11px 14px !important; font-size: .9rem !important;
+  transition: border-color .2s, box-shadow .2s !important;
+}
+.acc-input:focus { border-color: var(--acc-red) !important; box-shadow: 0 0 0 3px rgba(229,56,59,.25) !important; outline: none !important; }
+.acc-input:disabled { opacity: .4 !important; cursor: not-allowed !important; }
+.acc-input::placeholder { color: rgba(255,255,255,.25) !important; }
+.acc-hint { font-size: .72rem; color: rgba(255,255,255,.3); margin-top: 5px; }
+
+/* BUTTONS */
+.btn-acc-save {
+  background: linear-gradient(135deg, #e5383b, #c00); color: #fff; border: none;
+  padding: 12px 28px; border-radius: 10px; font-size: .88rem; font-weight: 800;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  transition: all .2s; box-shadow: 0 4px 16px rgba(229,56,59,.35);
+}
+.btn-acc-save:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(229,56,59,.45); }
+.btn-acc-cancel {
+  background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.7); padding: 12px 22px; border-radius: 10px;
+  font-size: .88rem; font-weight: 700; cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 7px; transition: all .2s;
+}
+.btn-acc-cancel:hover { border-color: rgba(255,255,255,.3); color: #fff; }
+
+/* INFO ROWS */
+.acc-info-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid var(--acc-border); }
+.acc-info-row:last-child { border-bottom: none; padding-bottom: 0; }
+.acc-info-lbl { font-size: .8rem; font-weight: 700; color: var(--acc-muted); text-transform: uppercase; letter-spacing: .4px; }
+.acc-info-val { font-size: .88rem; font-weight: 700; color: #fff; }
+.acc-badge-green { background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.3); color: #4ade80; font-size: .7rem; font-weight: 800; padding: 3px 11px; border-radius: 20px; letter-spacing: .5px; text-transform: uppercase; }
+.acc-badge-blue { background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.3); color: #93c5fd; font-size: .7rem; font-weight: 800; padding: 3px 11px; border-radius: 20px; letter-spacing: .5px; text-transform: uppercase; }
+
+/* STATS */
+.acc-stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 20px; }
+@media(max-width:480px){ .acc-stats-grid { grid-template-columns: repeat(2,1fr); } }
+.acc-stat-card { background: var(--acc-card); border: 1px solid var(--acc-border); border-radius: 14px; padding: 18px 16px; text-align: center; transition: border-color .2s; }
+.acc-stat-card:hover { border-color: rgba(229,56,59,.3); }
+.acc-stat-num { font-size: 1.8rem; font-weight: 900; color: var(--acc-red); line-height: 1; margin-bottom: 6px; }
+.acc-stat-lbl { font-size: .72rem; font-weight: 700; color: var(--acc-muted); text-transform: uppercase; letter-spacing: .5px; }
+
+/* SECURITY NOTE */
+.acc-sec-note { background: rgba(229,56,59,.07); border: 1px solid rgba(229,56,59,.18); border-radius: 10px; padding: 12px 16px; font-size: .8rem; color: rgba(255,255,255,.6); display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px; }
+.acc-sec-note i { color: var(--acc-red); margin-top: 1px; flex-shrink: 0; }
+
+/* TOAST */
+.acc-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1e2d3d; border: 1px solid rgba(34,197,94,.4); color: #4ade80; padding: 12px 24px; border-radius: 10px; font-size: .85rem; font-weight: 700; z-index: 9999; opacity: 0; transition: all .3s; white-space: nowrap; display: flex; align-items: center; gap: 8px; pointer-events: none; }
+.acc-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media(max-width:576px){ .acc-hero-name{font-size:1.3rem;} .acc-avatar{width:68px;height:68px;font-size:1.7rem;} }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- HERO -->
+<div class="acc-hero">
+  <div class="container">
+    <div class="acc-hero-inner">
+      <div class="acc-avatar">{{ user.name[0].upper() }}</div>
+      <div>
+        <h2 class="acc-hero-name">{{ user.name }}</h2>
+        <p class="acc-hero-email"><i class="fas fa-envelope me-1"></i>{{ user.email }}</p>
+        <span class="acc-hero-badge"><i class="fas fa-user-check"></i> Verified Member</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="acc-tabs-wrap">
+  <div class="container">
+    <div class="acc-tabs">
+      <button class="acc-tab active" data-tab="profile"><i class="fas fa-user-edit"></i> Edit Profile</button>
+      <button class="acc-tab" data-tab="info"><i class="fas fa-id-card"></i> Account Info</button>
+      <button class="acc-tab" data-tab="security"><i class="fas fa-lock"></i> Security</button>
+    </div>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="acc-body">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-7 col-xl-6">
+
+        <!-- STATS -->
+        <div class="acc-stats-grid">
+          <div class="acc-stat-card">
+            <div class="acc-stat-num">{% if bookings_count is defined %}{{ bookings_count }}{% else %}0{% endif %}</div>
+            <div class="acc-stat-lbl">Bookings</div>
+          </div>
+          <div class="acc-stat-card">
+            <div class="acc-stat-num"><i class="fas fa-star" style="font-size:1.2rem;color:#fbbf24;vertical-align:middle;"></i></div>
+            <div class="acc-stat-lbl">Gold Member</div>
+          </div>
+          <div class="acc-stat-card">
+            <div class="acc-stat-num">{{ user.created_at.strftime("'%y") if user.created_at else '—' }}</div>
+            <div class="acc-stat-lbl">Since</div>
+          </div>
+        </div>
+
+        <!-- PANEL: EDIT PROFILE -->
+        <div class="acc-panel active" id="panel-profile">
+          <div class="acc-card">
+            <div class="acc-card-head">
+              <span class="acc-card-title"><i class="fas fa-user-edit"></i> Edit Profile</span>
+            </div>
+            <div class="acc-card-body">
+              <form id="profileForm">
+                <div class="mb-4">
+                  <label class="acc-label">Full Name</label>
+                  <input type="text" id="pName" class="acc-input form-control" value="{{ user.name }}" required placeholder="Your full name">
+                </div>
+                <div class="mb-4">
+                  <label class="acc-label">Email Address</label>
+                  <input type="email" class="acc-input form-control" value="{{ user.email }}" disabled>
+                  <div class="acc-hint"><i class="fas fa-info-circle me-1"></i>Email address cannot be changed.</div>
+                </div>
+                <div class="mb-4">
+                  <label class="acc-label">Phone Number</label>
+                  <input type="tel" id="pPhone" class="acc-input form-control" value="{{ user.phone or '' }}" placeholder="9876543210">
+                </div>
+                <div class="mb-4">
+                  <label class="acc-label">City</label>
+                  <input type="text" id="pCity" class="acc-input form-control" value="{{ user.city or '' }}" placeholder="Your city">
+                </div>
+                <div class="d-flex gap-3 pt-2">
+                  <button type="submit" id="saveBtn" class="btn-acc-save"><i class="fas fa-save"></i> Save Changes</button>
+                  <a href="{{ url_for('user.dashboard') }}" class="btn-acc-cancel"><i class="fas fa-times"></i> Cancel</a>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL: ACCOUNT INFO -->
+        <div class="acc-panel" id="panel-info">
+          <div class="acc-card">
+            <div class="acc-card-head">
+              <span class="acc-card-title"><i class="fas fa-id-card"></i> Account Details</span>
+            </div>
+            <div class="acc-card-body">
+              <div class="acc-info-row"><span class="acc-info-lbl">Full Name</span><span class="acc-info-val">{{ user.name }}</span></div>
+              <div class="acc-info-row"><span class="acc-info-lbl">Email</span><span class="acc-info-val" style="font-size:.82rem;">{{ user.email }}</span></div>
+              <div class="acc-info-row"><span class="acc-info-lbl">Phone</span><span class="acc-info-val">{{ user.phone or '—' }}</span></div>
+              <div class="acc-info-row"><span class="acc-info-lbl">City</span><span class="acc-info-val">{{ user.city or '—' }}</span></div>
+              <div class="acc-info-row"><span class="acc-info-lbl">Role</span><span class="acc-badge-blue">Customer</span></div>
+              <div class="acc-info-row"><span class="acc-info-lbl">Member Since</span><span class="acc-info-val">{{ user.created_at.strftime('%B %Y') if user.created_at else 'N/A' }}</span></div>
+              <div class="acc-info-row"><span class="acc-info-lbl">Status</span><span class="acc-badge-green"><i class="fas fa-circle me-1" style="font-size:.5rem;"></i>Active</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL: SECURITY -->
+        <div class="acc-panel" id="panel-security">
+          <div class="acc-card">
+            <div class="acc-card-head">
+              <span class="acc-card-title"><i class="fas fa-lock"></i> Security Settings</span>
+            </div>
+            <div class="acc-card-body">
+              <div class="acc-sec-note"><i class="fas fa-info-circle"></i><span>For your security, password changes require email verification. Contact support to update your password.</span></div>
+              <div class="acc-info-row"><span class="acc-info-lbl">Password</span><span class="acc-info-val" style="letter-spacing:3px;">••••••••••</span></div>
+              <div class="acc-info-row"><span class="acc-info-lbl">Last Login</span><span class="acc-info-val">Today</span></div>
+              <div class="acc-info-row"><span class="acc-info-lbl">Account Safety</span><span class="acc-badge-green"><i class="fas fa-shield-alt me-1"></i>Protected</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="acc-toast" id="accToast"><i class="fas fa-check-circle"></i><span id="accToastMsg">Saved!</span></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.acc-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.acc-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.acc-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+function showToast(msg, ok=true) {
+  const t = document.getElementById('accToast');
+  document.getElementById('accToastMsg').textContent = msg;
+  t.style.borderColor = ok ? 'rgba(34,197,94,.4)' : 'rgba(229,56,59,.4)';
+  t.style.color = ok ? '#4ade80' : '#f87171';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+document.getElementById('profileForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('saveBtn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/user/update_profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: document.getElementById('pName').value.trim(),
+        phone: document.getElementById('pPhone').value.trim(),
+        city: document.getElementById('pCity').value.trim()
+      })
+    });
+    const data = await res.json();
+    showToast(data.success ? 'Profile updated successfully!' : (data.message || 'Update failed.'), data.success);
+  } catch { showToast('Network error. Try again.', false); }
+  finally { btn.innerHTML = '<i class="fas fa-save"></i> Save Changes'; btn.disabled = false; }
+});
+</script>
+{% endblock %}

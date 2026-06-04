@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CineBook{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg bms-navbar sticky-top">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('public.home') }}">
+      <div class="brand-icon"><i class="fas fa-film"></i></div>
+      <span class="brand-text">CineBook</span>
+    </a>
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" aria-controls="navMain" aria-expanded="false">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('public.home') }}"><i class="fas fa-home me-1"></i>Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link nav-movies-link" href="{{ url_for('public.home') }}#now-showing"
+             onclick="if(window.location.pathname=='/'){event.preventDefault();document.getElementById('moviesGrid')?.closest('.grid-sec')?.scrollIntoView({behavior:'smooth',block:'start'});}">
+            <i class="fas fa-film me-1"></i>Movies
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('public.contact') }}"><i class="fas fa-envelope me-1"></i>Contact</a>
+        </li>
+      </ul>
+
+      <!-- City Location Picker — opens shared full-screen modal -->
+      <div class="me-3">
+        <div class="nav-city-btn" id="navCityBtn" onclick="openCityModal()">
+          <i class="fas fa-map-marker-alt nav-city-icon"></i>
+          <span class="nav-city-label" id="navCityLabel">
+            {{ nav_selected_city if nav_selected_city else 'Select City' }}
+          </span>
+          <i class="fas fa-chevron-down nav-city-chevron"></i>
+        </div>
+      </div>
+
+      <!-- Right Side Auth Buttons -->
+      <div class="d-flex align-items-center gap-2 mt-2 mt-lg-0">
+        {% if session.get('user_id') %}
+          <span class="text-white-50 small d-none d-lg-inline">
+            <i class="fas fa-user-circle me-1"></i>{{ session.get('user_name','') }}
+          </span>
+          {% if session.get('role') == 'admin' %}
+            <a href="{{ url_for('admin.dashboard') }}" class="nav-btn nav-btn-outline">
+              <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+            </a>
+          {% elif session.get('role') == 'theatre_owner' %}
+            <a href="{{ url_for('theatre_owner.dashboard') }}" class="nav-btn nav-btn-outline">
+              <i class="fas fa-building me-1"></i>Dashboard
+            </a>
+          {% else %}
+            <a href="{{ url_for('user.dashboard') }}" class="nav-btn nav-btn-outline">
+              <i class="fas fa-user me-1"></i>My Account
+            </a>
+          {% endif %}
+          <a href="{{ url_for('auth.logout') }}" class="nav-btn nav-btn-red">
+            <i class="fas fa-sign-out-alt me-1"></i>Logout
+          </a>
+        {% else %}
+          <button onclick="openLoginModal()" class="nav-btn nav-btn-outline" type="button">Login</button>
+          <button onclick="openSignupModal()" class="nav-btn nav-btn-red" type="button">Sign Up</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── SHARED CITY MODAL STYLES ── -->
+<style>
+.nav-city-btn {
+  display: flex; align-items: center; gap: 7px; cursor: pointer;
+  background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.12);
+  border-radius: 10px; padding: 7px 13px; transition: all .2s;
+  color: #fff; font-size: .87rem; font-weight: 600; white-space: nowrap;
+  user-select: none;
+}
+.nav-city-btn:hover { background: rgba(229,56,59,.12); border-color: rgba(229,56,59,.4); }
+.nav-city-btn.open  { background: rgba(229,56,59,.15); border-color: #e5383b; }
+.nav-city-icon  { color: #e5383b; font-size: .85rem; }
+.nav-city-label { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.nav-city-chevron { font-size: .65rem; color: rgba(255,255,255,.45); transition: transform .25s; }
+
+/* ── Full-screen city modal (shared by navbar + search bar) ── */
+#globalCityModal {
+  display: none; position: fixed; inset: 0; z-index: 10500;
+  background: rgba(4,7,16,.88); backdrop-filter: blur(10px);
+  align-items: center; justify-content: center; padding: 20px;
+}
+#globalCityModal.open { display: flex; }
+.gcm-box {
+  background: #111827; border: 1.5px solid #1e2d48; border-radius: 20px;
+  width: 100%; max-width: 780px; max-height: 88vh;
+  overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: 0 40px 90px rgba(0,0,0,.75);
+  animation: gcmPop .22s cubic-bezier(.22,.68,0,1.2);
+}
+@keyframes gcmPop { from{opacity:0;transform:scale(.96) translateY(-12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+
+/* Header */
+.gcm-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 26px 14px; border-bottom: 1px solid rgba(255,255,255,.06);
+  flex-shrink: 0;
+}
+.gcm-head-left { display: flex; align-items: center; gap: 10px; }
+.gcm-head-left .gcm-pin { color: #e5383b; font-size: 1.15rem; }
+.gcm-head-left h5 { color: #fff; font-size: 1.1rem; font-weight: 800; margin: 0; }
+.gcm-close {
+  background: rgba(255,255,255,.07); border: 1.5px solid rgba(255,255,255,.1);
+  color: rgba(255,255,255,.55); width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: .85rem; transition: all .2s; flex-shrink: 0;
+}
+.gcm-close:hover { background: #e5383b; border-color: #e5383b; color: #fff; }
+
+/* Search */
+.gcm-search-row { padding: 14px 26px 6px; position: relative; flex-shrink: 0; }
+.gcm-search-icon {
+  position: absolute; left: 40px; top: 50%; transform: translateY(-50%);
+  color: rgba(255,255,255,.3); font-size: .88rem; pointer-events: none;
+}
+.gcm-search {
+  width: 100%; background: rgba(255,255,255,.05);
+  border: 1.5px solid rgba(255,255,255,.12); border-radius: 12px;
+  color: #fff; padding: 13px 16px 13px 40px; font-size: .9rem;
+  outline: none; transition: border-color .22s;
+}
+.gcm-search::placeholder { color: rgba(255,255,255,.28); }
+.gcm-search:focus { border-color: #e5383b; box-shadow: 0 0 0 3px rgba(229,56,59,.12); }
+
+/* Detect */
+.gcm-detect {
+  display: inline-flex; align-items: center; gap: 7px;
+  color: #e5383b; font-size: .84rem; font-weight: 600;
+  cursor: pointer; padding: 2px 0 10px 26px; transition: opacity .2s;
+}
+.gcm-detect:hover { opacity: .72; }
+
+/* Scrollable body */
+.gcm-body { overflow-y: auto; padding: 0 26px 26px; flex: 1; }
+.gcm-body::-webkit-scrollbar { width: 4px; }
+.gcm-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
+
+/* Section label */
+.gcm-sec { color: rgba(255,255,255,.32); font-size: .67rem; font-weight: 800;
+  letter-spacing: 1.3px; text-transform: uppercase; padding: 14px 0 10px; }
+
+/* Popular grid */
+.gcm-popular-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 2px;
+}
+@media(max-width:620px){ .gcm-popular-grid { grid-template-columns: repeat(3,1fr); } }
+@media(max-width:380px){ .gcm-popular-grid { grid-template-columns: repeat(2,1fr); } }
+
+.gcm-city-card {
+  background: rgba(255,255,255,.05); border: 1.5px solid rgba(255,255,255,.08);
+  border-radius: 13px; padding: 14px 8px 12px; text-align: center;
+  cursor: pointer; transition: all .22s;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.gcm-city-card:hover {
+  background: rgba(229,56,59,.1); border-color: rgba(229,56,59,.4);
+  transform: translateY(-3px); box-shadow: 0 8px 20px rgba(229,56,59,.18);
+}
+.gcm-city-card.sel {
+  background: linear-gradient(135deg,rgba(229,56,59,.22),rgba(180,0,0,.18));
+  border-color: #e5383b; box-shadow: 0 4px 16px rgba(229,56,59,.28);
+}
+.gcm-city-emoji { font-size: 2rem; line-height: 1; display: block; }
+.gcm-city-name  { font-size: .71rem; font-weight: 700; color: rgba(255,255,255,.72); white-space: nowrap; }
+.gcm-city-card.sel .gcm-city-name { color: #fff; }
+
+/* All-cities list */
+.gcm-all-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; margin-top: 4px;
+}
+@media(max-width:520px){ .gcm-all-grid { grid-template-columns: repeat(2,1fr); } }
+
+.gcm-all-item {
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+  border-radius: 9px; padding: 10px 13px; font-size: .82rem;
+  color: rgba(255,255,255,.62); cursor: pointer; transition: all .17s;
+  display: flex; align-items: center; gap: 8px;
+}
+.gcm-all-item:hover { background: rgba(229,56,59,.1); border-color: rgba(229,56,59,.35); color: #fff; }
+.gcm-all-item.sel   { background: rgba(229,56,59,.15); border-color: #e5383b; color: #e5383b; font-weight: 700; }
+.gcm-all-item i     { font-size: .65rem; color: rgba(255,255,255,.22); flex-shrink: 0; }
+.gcm-all-item.sel i { color: #e5383b; }
+
+/* View-all toggle button */
+.gcm-toggle-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: transparent; border: 1.5px solid #e5383b; color: #e5383b;
+  padding: 10px 28px; border-radius: 30px; font-size: .84rem; font-weight: 700;
+  cursor: pointer; transition: all .22s; margin: 16px auto 0; width: fit-content;
+}
+.gcm-toggle-btn:hover { background: #e5383b; color: #fff; }
+.gcm-toggle-btn .chev { transition: transform .25s; }
+.gcm-toggle-btn.expanded .chev { transform: rotate(180deg); }
+
+/* Search results panel */
+.gcm-results { display: none; }
+.gcm-results.on { display: block; }
+.gcm-no-result { color: rgba(255,255,255,.32); font-size: .83rem; padding: 12px 0; }
+</style>
+
+<!-- ── SHARED CITY MODAL HTML ── -->
+{%- set _gcm_popular = ['Mumbai','Chennai','Kolkata','Jaipur','Bangalore','Pune','Ahmedabad','Lucknow','Nagpur','Surat','Hyderabad','Delhi'] -%}
+{%- set _gcm_emojis  = {'Mumbai':'🏙️','Chennai':'🌉','Kolkata':'🌆','Jaipur':'🏯','Bangalore':'🏛️','Pune':'⛩️','Ahmedabad':'🏰','Lucknow':'🕌','Nagpur':'🍊','Surat':'💎','Hyderabad':'🕍','Delhi':'🗼','Kochi':'🌴','Chandigarh':'🌸','Bhopal':'🏞️','Patna':'🏫','Indore':'🏡','Vadodara':'🎭','Coimbatore':'🌿','Visakhapatnam':'🌊'} -%}
+{%- set _gcm_cur = nav_selected_city or '' -%}
+
+<div id="globalCityModal" onclick="if(event.target===this)gcmClose()">
+  <div class="gcm-box">
+
+    <div class="gcm-head">
+      <div class="gcm-head-left">
+        <i class="fas fa-map-marker-alt gcm-pin"></i>
+        <h5>Select Your City</h5>
+      </div>
+      <button class="gcm-close" onclick="gcmClose()"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div class="gcm-search-row">
+      <i class="fas fa-search gcm-search-icon"></i>
+      <input id="gcmSearch" class="gcm-search" type="text"
+             placeholder="Search for your city"
+             oninput="gcmFilter(this.value)" autocomplete="off">
+    </div>
+    <div class="gcm-detect" id="gcmDetectBtn" onclick="gcmDetect()">
+      <i class="fas fa-crosshairs"></i> Detect my location
+    </div>
+
+    <div class="gcm-body">
+
+      <!-- Normal view -->
+      <div id="gcmNormal">
+        <div class="gcm-sec">Popular Cities</div>
+        <div class="gcm-popular-grid">
+          {% for city in _gcm_popular %}
+          <div class="gcm-city-card {% if city == _gcm_cur %}sel{% endif %}"
+               onclick="gcmPick('{{ city }}')">
+            <span class="gcm-city-emoji">{{ _gcm_emojis.get(city,'🏙️') }}</span>
+            <span class="gcm-city-name">{{ city }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- All cities (hidden until toggled) -->
+        <div id="gcmAllWrap" style="display:none;">
+          <div class="gcm-sec">All Cities</div>
+          <div class="gcm-all-grid">
+            <div class="gcm-all-item {% if not _gcm_cur %}sel{% endif %}" onclick="gcmPick('')">
+              <i class="fas fa-globe-asia"></i> All Cities
+            </div>
+            {% for c in nav_cities %}
+            <div class="gcm-all-item {% if c == _gcm_cur %}sel{% endif %}" onclick="gcmPick('{{ c }}')">
+              <i class="fas fa-map-marker-alt"></i> {{ c }}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <button class="gcm-toggle-btn" id="gcmToggleBtn" onclick="gcmToggleAll()">
+          <span id="gcmToggleTxt">View All Cities</span>
+          <i class="fas fa-chevron-down chev"></i>
+        </button>
+      </div>
+
+      <!-- Search results view -->
+      <div id="gcmResults" class="gcm-results">
+        <div class="gcm-sec">Search Results</div>
+        <div class="gcm-all-grid" id="gcmResultList"></div>
+      </div>
+
+    </div><!-- /gcm-body -->
+  </div>
+</div>
+
+<script>
+// ── GLOBAL CITY MODAL ──────────────────────────────────────────
+const GCM_CITIES = [
+  {% for c in nav_cities %}'{{ c }}'{% if not loop.last %},{% endif %}{% endfor %}
+];
+let _gcmAllShown = false;
+let _gcmSource   = 'nav'; // 'nav' or 'search'
+
+function openCityModal(source) {
+  _gcmSource = source || 'nav';
+  const modal = document.getElementById('globalCityModal');
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Highlight active city
+  const cur = document.getElementById('navCityLabel')?.textContent?.trim();
+  if (cur && cur !== 'Select City') _gcmMarkActive(cur);
+  setTimeout(() => document.getElementById('gcmSearch')?.focus(), 120);
+}
+function gcmClose() {
+  document.getElementById('globalCityModal').classList.remove('open');
+  document.body.style.overflow = '';
+  // Reset search
+  const si = document.getElementById('gcmSearch');
+  if (si) { si.value = ''; }
+  gcmFilter('');
+}
+function gcmPick(city) {
+  // Update navbar label
+  const navLbl = document.getElementById('navCityLabel');
+  if (navLbl) navLbl.textContent = city || 'Select City';
+  // Update search-bar label if present
+  const sbLbl = document.getElementById('searchCityLabel');
+  if (sbLbl) sbLbl.textContent = city || 'All Cities';
+  // Update hidden input if on home page
+  const hidden = document.getElementById('hiddenCityValue');
+  if (hidden) hidden.value = city;
+  gcmClose();
+  // Navigate with city filter
+  const url = new URL(window.location.origin + '/');
+  if (city) url.searchParams.set('city', city);
+  window.location.href = url.toString();
+}
+function _gcmMarkActive(city) {
+  document.querySelectorAll('.gcm-city-card, .gcm-all-item').forEach(el => {
+    const name = el.querySelector('.gcm-city-name')?.textContent?.trim()
+                || el.textContent?.trim();
+    el.classList.toggle('sel', name === city || (city === '' && name === 'All Cities'));
+  });
+}
+let _gcmAllOpen = false;
+function gcmToggleAll() {
+  _gcmAllOpen = !_gcmAllOpen;
+  const wrap = document.getElementById('gcmAllWrap');
+  const btn  = document.getElementById('gcmToggleBtn');
+  const txt  = document.getElementById('gcmToggleTxt');
+  wrap.style.display = _gcmAllOpen ? '' : 'none';
+  txt.textContent    = _gcmAllOpen ? 'Hide All Cities' : 'View All Cities';
+  btn.classList.toggle('expanded', _gcmAllOpen);
+}
+function gcmFilter(val) {
+  const q = val.trim().toLowerCase();
+  const normal  = document.getElementById('gcmNormal');
+  const results = document.getElementById('gcmResults');
+  const list    = document.getElementById('gcmResultList');
+  if (!q) {
+    results.classList.remove('on');
+    normal.style.display = '';
+    return;
+  }
+  normal.style.display = 'none';
+  results.classList.add('on');
+  const cur  = document.getElementById('navCityLabel')?.textContent?.trim() || '';
+  const hits = GCM_CITIES.filter(c => c.toLowerCase().includes(q));
+  if (!hits.length) {
+    list.innerHTML = '<div class="gcm-no-result">No cities found matching your search.</div>';
+  } else {
+    list.innerHTML = hits.map(c =>
+      `<div class="gcm-all-item ${c===cur?'sel':''}" onclick="gcmPick('${c}')">
+         <i class="fas fa-map-marker-alt"></i> ${c}
+       </div>`
+    ).join('');
+  }
+}
+function gcmDetect() {
+  if (!navigator.geolocation) { alert('Geolocation not supported by your browser.'); return; }
+  const btn = document.getElementById('gcmDetectBtn');
+  if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting…';
+
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      try {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`);
+        const data = await res.json();
+        const addr = data.address || {};
+
+        // Collect all possible locality names — ordered from most specific to least
+        const candidates = [
+          addr.village, addr.hamlet, addr.neighbourhood, addr.suburb,
+          addr.town, addr.city_district, addr.city,
+          addr.county, addr.state_district, addr.state
+        ].filter(Boolean);
+
+        // Normalize: strip diacritics, lowercase, trim
+        const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+
+        // 1. Exact match (case-insensitive)
+        let match = null;
+        for (const candidate of candidates) {
+          match = GCM_CITIES.find(c => norm(c) === norm(candidate));
+          if (match) break;
+        }
+
+        // 2. Contains match — "Puttaparthi Mandal" ↔ "Puttaparthi"
+        if (!match) {
+          for (const candidate of candidates) {
+            match = GCM_CITIES.find(c =>
+              norm(c).includes(norm(candidate)) ||
+              norm(candidate).includes(norm(c))
+            );
+            if (match) break;
+          }
+        }
+
+        // 3. Word-level overlap — any meaningful word (>3 chars) shared
+        if (!match) {
+          for (const candidate of candidates) {
+            const words = norm(candidate).split(/[\s,\-]+/).filter(w => w.length > 3);
+            match = GCM_CITIES.find(c => {
+              const cWords = norm(c).split(/[\s,\-]+/);
+              return words.some(w => cWords.some(cw => cw.includes(w) || w.includes(cw)));
+            });
+            if (match) break;
+          }
+        }
+
+        // 4. If still no match: use the detected name directly as a city filter.
+        //    This handles towns/villages that exist in the DB but aren't in GCM_CITIES
+        //    (e.g. Puttaparthi — it IS in theaters table but wasn't in popular city list).
+        if (match) {
+          gcmPick(match);
+        } else {
+          const detectedName = candidates[0] || null;
+          if (detectedName) {
+            // Try sending the raw detected name as city param — backend uses ILIKE %city%
+            const confirmMsg = `📍 Detected: "${detectedName}"\n\nSearch for movies in "${detectedName}"?`;
+            if (confirm(confirmMsg)) {
+              // Update navbar label
+              const navLbl = document.getElementById('navCityLabel');
+              if (navLbl) navLbl.textContent = detectedName;
+              // Navigate with detected city as filter
+              const url = new URL(window.location.origin + '/');
+              url.searchParams.set('city', detectedName);
+              window.location.href = url.toString();
+            } else {
+              openCityModal('nav');
+            }
+          } else {
+            const pick = confirm('Could not determine your city. Would you like to select manually?');
+            if (pick) openCityModal('nav');
+          }
+        }
+      } catch(e) {
+        alert('Location lookup failed. Please select manually.');
+      } finally {
+        if (btn) btn.innerHTML = '<i class="fas fa-crosshairs"></i> Detect my location';
+      }
+    },
+    err => {
+      const msgs = {
+        1: 'Location access denied. Please allow location permission and try again, or select manually.',
+        2: 'Location unavailable. Please select your city manually.',
+        3: 'Location request timed out. Please try again or select manually.'
+      };
+      alert(msgs[err.code] || 'Location access denied. Please select manually.');
+      if (btn) btn.innerHTML = '<i class="fas fa-crosshairs"></i> Detect my location';
+    },
+    { timeout: 10000, maximumAge: 60000 }
+  );
+}
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') gcmClose();
+});
+</script>
+
+<script>
+// When navigating to /#now-showing from another page, smooth-scroll after load
+if (window.location.hash === '#now-showing') {
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      var el = document.getElementById('now-showing');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 200);
+  });
+}
+</script>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="container mt-3">
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show rounded-3">
+          <i class="fas fa-info-circle me-2"></i>{{ msg }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+<!-- FOOTER -->
+<footer style="background:#040710;border-top:1px solid #1a2235;padding:44px 0 24px;">
+  <div class="container" style="padding:0 24px;">
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="brand-icon"><i class="fas fa-film"></i></div>
+          <span class="fw-bold fs-5" style="color:#fff;">CineBook</span>
+        </div>
+        <p style="color:rgba(255,255,255,.38);font-size:.83rem;line-height:1.7;margin-bottom:16px;">India's premier movie ticketing platform. Book movies, shows and events with ease — anytime, anywhere.</p>
+        <div class="d-flex gap-3">
+          <a href="#" style="color:rgba(255,255,255,.3);font-size:1.15rem;transition:color .2s;" onmouseover="this.style.color='#1877f2'" onmouseout="this.style.color='rgba(255,255,255,.3)'"><i class="fab fa-facebook"></i></a>
+          <a href="#" style="color:rgba(255,255,255,.3);font-size:1.15rem;transition:color .2s;" onmouseover="this.style.color='#e5383b'" onmouseout="this.style.color='rgba(255,255,255,.3)'"><i class="fab fa-instagram"></i></a>
+          <a href="#" style="color:rgba(255,255,255,.3);font-size:1.15rem;transition:color .2s;" onmouseover="this.style.color='#1da1f2'" onmouseout="this.style.color='rgba(255,255,255,.3)'"><i class="fab fa-twitter"></i></a>
+          <a href="#" style="color:rgba(255,255,255,.3);font-size:1.15rem;transition:color .2s;" onmouseover="this.style.color='#ff0000'" onmouseout="this.style.color='rgba(255,255,255,.3)'"><i class="fab fa-youtube"></i></a>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <h6 style="color:rgba(255,255,255,.7);font-size:.78rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;margin-bottom:14px;">Movies</h6>
+        <ul class="list-unstyled">
+          <li class="mb-2"><a href="{{ url_for('public.home') }}" style="color:rgba(255,255,255,.38);font-size:.83rem;text-decoration:none;" onmouseover="this.style.color='#e5383b'" onmouseout="this.style.color='rgba(255,255,255,.38)'">Now Showing</a></li>
+          <li class="mb-2"><a href="{{ url_for('public.home') }}?genre=Action" style="color:rgba(255,255,255,.38);font-size:.83rem;text-decoration:none;" onmouseover="this.style.color='#e5383b'" onmouseout="this.style.color='rgba(255,255,255,.38)'">Action</a></li>
+          <li class="mb-2"><a href="{{ url_for('public.home') }}?genre=Comedy" style="color:rgba(255,255,255,.38);font-size:.83rem;text-decoration:none;" onmouseover="this.style.color='#e5383b'" onmouseout="this.style.color='rgba(255,255,255,.38)'">Comedy</a></li>
+          <li class="mb-2"><a href="{{ url_for('public.home') }}?genre=Drama" style="color:rgba(255,255,255,.38);font-size:.83rem;text-decoration:none;" onmouseover="this.style.color='#e5383b'" onmouseout="this.style.color='rgba(255,255,255,.38)'">Drama</a></li>
+        </ul>
+      </div>
+      <div class="col-md-2">
+        <h6 style="color:rgba(255,255,255,.7);font-size:.78rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;margin-bottom:14px;">Account</h6>
+        <ul class="list-unstyled">
+          <li class="mb-2"><a href="#" onclick="openLoginModal();return false;" style="color:rgba(255,255,255,.38);font-size:.83rem;text-decoration:none;" onmouseover="this.style.color='#e5383b'" onmouseout="this.style.color='rgba(255,255,255,.38)'">Login</a></li>
+          <li class="mb-2"><a href="#" onclick="openSignupModal();return false;" style="color:rgba(255,255,255,.38);font-size:.83rem;text-decoration:none;" onmouseover="this.style.color='#e5383b'" onmouseout="this.style.color='rgba(255,255,255,.38)'">Sign Up</a></li>
+          {% if session.get('role') == 'user' %}
+          <li class="mb-2"><a href="{{ url_for('user.my_bookings') }}" style="color:rgba(255,255,255,.38);font-size:.83rem;text-decoration:none;" onmouseover="this.style.color='#e5383b'" onmouseout="this.style.color='rgba(255,255,255,.38)'">My Bookings</a></li>
+          {% endif %}
+        </ul>
+      </div>
+      <div class="col-md-4">
+        <h6 style="color:rgba(255,255,255,.7);font-size:.78rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;margin-bottom:14px;">Contact Us</h6>
+        <p style="color:rgba(255,255,255,.38);font-size:.83rem;margin-bottom:9px;"><i class="fas fa-envelope me-2" style="color:#e5383b;"></i>support@cinebook.com</p>
+        <p style="color:rgba(255,255,255,.38);font-size:.83rem;margin-bottom:9px;"><i class="fas fa-phone me-2" style="color:#e5383b;"></i>1800-599-0099</p>
+        <p style="color:rgba(255,255,255,.38);font-size:.83rem;margin-bottom:16px;"><i class="fas fa-clock me-2" style="color:#e5383b;"></i>24/7 Support</p>
+        <a href="{{ url_for('public.contact') }}" style="background:#e5383b;color:#fff;padding:8px 18px;border-radius:7px;text-decoration:none;font-size:.8rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+          <i class="fas fa-comment-dots"></i> Send Feedback
+        </a>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1a2235;margin-top:30px;padding-top:18px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span style="color:rgba(255,255,255,.28);font-size:.78rem;">&copy; 2025 CineBook. All rights reserved.</span>
+      <span style="color:rgba(255,255,255,.28);font-size:.78rem;">Made with <i class="fas fa-heart" style="color:#e5383b;"></i> for Movie Lovers</span>
+    </div>
+  </div>
+</footer>
+
+<div id="toastBox" style="position:fixed;top:80px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN + FORGOT PASSWORD MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="authModalBg" style="display:none;position:fixed;inset:0;background:rgba(4,7,16,.82);
+     backdrop-filter:blur(6px);z-index:9000;align-items:center;justify-content:center;padding:20px;">
+  <div id="authModal" style="background:#0e1420;border:1.5px solid #1a2235;border-radius:20px;
+       width:100%;max-width:420px;position:relative;overflow:hidden;
+       box-shadow:0 24px 60px rgba(0,0,0,.6);animation:slideUp .3s ease;">
+    <style>
+      @keyframes slideUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+      .ml-close{position:absolute;top:16px;right:18px;background:none;border:none;color:rgba(255,255,255,.45);
+        font-size:1.2rem;cursor:pointer;z-index:2;transition:color .2s;}
+      .ml-close:hover{color:#e5383b;}
+      .ml-head{background:linear-gradient(135deg,#e5383b,#c00);padding:28px 28px 22px;text-align:center;}
+      .ml-head-ico{font-size:2rem;margin-bottom:6px;}
+      .ml-head h4{color:#fff;margin:0;font-size:1.15rem;font-weight:800;}
+      .ml-head p{color:rgba(255,255,255,.7);font-size:.82rem;margin:4px 0 0;}
+      .ml-body{padding:26px 28px;}
+      .ml-step{display:none;}
+      .ml-step.on{display:block;}
+      .ml-label{color:rgba(255,255,255,.6);font-size:.8rem;font-weight:600;margin-bottom:6px;display:block;}
+      .ml-inp{
+        background:#1a2235;border:1.5px solid #2a3550;border-radius:9px;
+        color:#fff;padding:12px 14px;width:100%;font-size:.9rem;
+        transition:border-color .2s;outline:none;box-sizing:border-box;
+      }
+      .ml-inp::placeholder{color:#4a5568;}
+      .ml-inp:focus{border-color:#e5383b;box-shadow:0 0 0 3px rgba(229,56,59,.1);}
+      .ml-inp-wrap{position:relative;}
+      .ml-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+        background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:.9rem;}
+      .ml-eye:hover{color:#e5383b;}
+      .ml-btn{
+        width:100%;background:linear-gradient(135deg,#e5383b,#c00);color:#fff;
+        border:none;padding:13px;border-radius:9px;font-weight:700;font-size:.92rem;
+        cursor:pointer;margin-top:16px;transition:all .25s;display:flex;
+        align-items:center;justify-content:center;gap:8px;
+      }
+      .ml-btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(229,56,59,.35);}
+      .ml-btn:disabled{opacity:.6;pointer-events:none;}
+      .ml-link{color:#e5383b;font-size:.82rem;cursor:pointer;background:none;border:none;
+        padding:0;text-decoration:none;transition:color .2s;}
+      .ml-link:hover{color:#ff7070;}
+      .ml-err{background:#2a0a0a;border:1.5px solid #7f1d1d;color:#f87171;border-radius:8px;
+        padding:10px 14px;font-size:.82rem;margin-top:10px;display:none;}
+      .ml-ok{background:#071a0f;border:1.5px solid #15532e;color:#4ade80;border-radius:8px;
+        padding:10px 14px;font-size:.82rem;margin-top:10px;display:none;}
+      .otp-row{display:flex;gap:8px;justify-content:center;}
+      .otp-cell{width:46px;height:54px;background:#1a2235;border:1.5px solid #2a3550;
+        border-radius:9px;color:#fff;font-size:1.4rem;font-weight:700;text-align:center;
+        outline:none;transition:border-color .2s;}
+      .otp-cell:focus{border-color:#e5383b;box-shadow:0 0 0 3px rgba(229,56,59,.1);}
+      .ml-steps-bar{display:flex;gap:6px;margin-bottom:20px;}
+      .ml-steps-bar span{flex:1;height:3px;border-radius:2px;background:#1a2235;transition:background .3s;}
+      .ml-steps-bar span.done{background:#e5383b;}
+    </style>
+
+    <button class="ml-close" onclick="closeLoginModal()"><i class="fas fa-times"></i></button>
+
+    <!-- Header -->
+    <div class="ml-head">
+      <div class="ml-head-ico">🎬</div>
+      <h4 id="mlHeadTitle">Welcome Back</h4>
+      <p id="mlHeadSub">Sign in to your CineBook account</p>
+    </div>
+
+    <div class="ml-body">
+
+      <!-- ── STEP: LOGIN ── -->
+      <div class="ml-step on" id="stepLogin">
+        <div style="margin-bottom:14px;">
+          <label class="ml-label">Email Address</label>
+          <input type="email" class="ml-inp" id="mlEmail" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div style="margin-bottom:8px;">
+          <label class="ml-label">Password</label>
+          <div class="ml-inp-wrap">
+            <input type="password" class="ml-inp" id="mlPassword" placeholder="Your password" autocomplete="current-password" style="padding-right:42px;">
+            <button class="ml-eye" type="button" onclick="mlToggleEye('mlPassword',this)"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <div style="text-align:right;margin-bottom:4px;">
+          <button class="ml-link" onclick="mlGoto('stepFP1')" type="button">Forgot Password?</button>
+        </div>
+        <div class="ml-err" id="loginErr"></div>
+        <button class="ml-btn" id="mlLoginBtn" onclick="mlDoLogin()">
+          <i class="fas fa-sign-in-alt"></i> Login
+        </button>
+        <div style="text-align:center;margin-top:16px;font-size:.84rem;color:rgba(255,255,255,.45);">
+          Don't have an account?
+          <a href="#" onclick="openSignupModal();return false;" style="color:#e5383b;font-weight:600;text-decoration:none;">Sign Up</a>
+        </div>
+      </div>
+
+      <!-- ── STEP: FP1 – Enter Email ── -->
+      <div class="ml-step" id="stepFP1">
+        <div class="ml-steps-bar">
+          <span class="done" id="fpBar1"></span>
+          <span id="fpBar2"></span>
+          <span id="fpBar3"></span>
+        </div>
+        <p style="color:rgba(255,255,255,.55);font-size:.85rem;margin-bottom:18px;line-height:1.6;">
+          Enter your registered email address and we'll send you a 6-digit OTP.
+        </p>
+        <label class="ml-label">Email Address</label>
+        <input type="email" class="ml-inp" id="fpEmail" placeholder="you@example.com" autocomplete="email">
+        <div class="ml-err" id="fp1Err"></div>
+        <div class="ml-ok"  id="fp1Ok"></div>
+        <button class="ml-btn" id="fp1Btn" onclick="mlFPSendOtp()">
+          <i class="fas fa-paper-plane"></i> Send OTP
+        </button>
+        <div style="text-align:center;margin-top:14px;">
+          <button class="ml-link" onclick="mlGoto('stepLogin')" type="button"><i class="fas fa-arrow-left me-1"></i>Back to Login</button>
+        </div>
+      </div>
+
+      <!-- ── STEP: FP2 – Enter OTP ── -->
+      <div class="ml-step" id="stepFP2">
+        <div class="ml-steps-bar">
+          <span class="done" id="fpBar1b"></span>
+          <span class="done" id="fpBar2b"></span>
+          <span id="fpBar3b"></span>
+        </div>
+        <p style="color:rgba(255,255,255,.55);font-size:.85rem;margin-bottom:6px;">
+          We sent a 6-digit OTP to <strong id="fpEmailDisplay" style="color:#e5383b;"></strong>
+        </p>
+        <p style="color:rgba(255,255,255,.35);font-size:.78rem;margin-bottom:18px;">Valid for 10 minutes.</p>
+        <div class="otp-row" id="otpRow">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+          <input class="otp-cell" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+        </div>
+        <div class="ml-err" id="fp2Err"></div>
+        <div class="ml-ok"  id="fp2Ok"></div>
+        <button class="ml-btn" id="fp2Btn" onclick="mlFPVerifyOtp()">
+          <i class="fas fa-check-circle"></i> Verify OTP
+        </button>
+        <div style="text-align:center;margin-top:14px;font-size:.82rem;color:rgba(255,255,255,.4);">
+          Didn't receive?
+          <button class="ml-link" onclick="mlFPSendOtp(true)" type="button">Resend OTP</button>
+        </div>
+      </div>
+
+      <!-- ── STEP: FP3 – New Password ── -->
+      <div class="ml-step" id="stepFP3">
+        <div class="ml-steps-bar">
+          <span class="done"></span><span class="done"></span><span class="done"></span>
+        </div>
+        <p style="color:rgba(255,255,255,.55);font-size:.85rem;margin-bottom:18px;">
+          OTP verified! Create a strong new password.
+        </p>
+        <div style="margin-bottom:14px;">
+          <label class="ml-label">New Password</label>
+          <div class="ml-inp-wrap">
+            <input type="password" class="ml-inp" id="fpNewPw" placeholder="Min 6 characters" style="padding-right:42px;">
+            <button class="ml-eye" type="button" onclick="mlToggleEye('fpNewPw',this)"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <div style="margin-bottom:4px;">
+          <label class="ml-label">Confirm Password</label>
+          <div class="ml-inp-wrap">
+            <input type="password" class="ml-inp" id="fpConfPw" placeholder="Repeat password" style="padding-right:42px;">
+            <button class="ml-eye" type="button" onclick="mlToggleEye('fpConfPw',this)"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="ml-err" id="fp3Err"></div>
+        <div class="ml-ok"  id="fp3Ok"></div>
+        <button class="ml-btn" id="fp3Btn" onclick="mlFPReset()">
+          <i class="fas fa-key"></i> Reset Password
+        </button>
+      </div>
+
+    </div><!-- /ml-body -->
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SIGNUP MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="signupModalBg" style="display:none;position:fixed;inset:0;background:rgba(4,7,16,.82);
+     backdrop-filter:blur(6px);z-index:9100;align-items:center;justify-content:center;padding:20px;">
+  <div id="signupModal" style="background:#0e1420;border:1.5px solid #1a2235;border-radius:20px;
+       width:100%;max-width:480px;position:relative;overflow:hidden;
+       box-shadow:0 24px 60px rgba(0,0,0,.6);animation:slideUp .3s ease;">
+
+    <button class="ml-close" onclick="closeSignupModal()"><i class="fas fa-times"></i></button>
+
+    <!-- Header -->
+    <div class="ml-head">
+      <div class="ml-head-ico">🎬</div>
+      <h4>Create Account</h4>
+      <p>Join CineBook – it's free!</p>
+    </div>
+
+    <div class="ml-body" style="max-height:70vh;overflow-y:auto;">
+      <div id="suErr" class="ml-err"></div>
+
+      <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+        <div>
+          <label class="ml-label"><i class="fas fa-user me-1"></i>Full Name</label>
+          <input type="text" class="ml-inp" id="suName" placeholder="Your full name" autocomplete="name">
+        </div>
+        <div>
+          <label class="ml-label"><i class="fas fa-envelope me-1"></i>Email Address</label>
+          <input type="email" class="ml-inp" id="suEmail" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label class="ml-label"><i class="fas fa-phone me-1"></i>Phone</label>
+            <input type="tel" class="ml-inp" id="suPhone" placeholder="9876543210">
+          </div>
+          <div>
+            <label class="ml-label"><i class="fas fa-map-marker-alt me-1"></i>City</label>
+            <input type="text" class="ml-inp" id="suCity" placeholder="Mumbai">
+          </div>
+        </div>
+        <div>
+          <label class="ml-label"><i class="fas fa-lock me-1"></i>Password</label>
+          <div class="ml-inp-wrap">
+            <input type="password" class="ml-inp" id="suPassword" placeholder="Min 6 characters" style="padding-right:42px;">
+            <button class="ml-eye" type="button" onclick="mlToggleEye('suPassword',this)"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <div>
+          <label class="ml-label"><i class="fas fa-lock me-1"></i>Confirm Password</label>
+          <div class="ml-inp-wrap">
+            <input type="password" class="ml-inp" id="suConfirm" placeholder="Repeat password" style="padding-right:42px;">
+            <button class="ml-eye" type="button" onclick="mlToggleEye('suConfirm',this)"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <button class="ml-btn" id="suBtn" onclick="doSignup()">
+        <i class="fas fa-user-plus"></i> Create Account
+      </button>
+
+      <div style="text-align:center;margin-top:14px;font-size:.84rem;color:rgba(255,255,255,.45);">
+        Already have an account?
+        <a href="#" onclick="closeSignupModal();openLoginModal();return false;" style="color:#e5383b;font-weight:600;text-decoration:none;">Login</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Signup Modal open/close ──
+function openSignupModal(){
+  closeLoginModal();
+  const bg = document.getElementById('signupModalBg');
+  bg.style.display = 'flex';
+  setTimeout(() => document.getElementById('suName')?.focus(), 80);
+}
+function closeSignupModal(){
+  document.getElementById('signupModalBg').style.display = 'none';
+  document.getElementById('suErr').style.display = 'none';
+}
+document.getElementById('signupModalBg').addEventListener('click', function(e){
+  if(e.target === this) closeSignupModal();
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeSignupModal(); });
+
+// Auto-open signup if URL has ?showSignup=1
+if(new URLSearchParams(location.search).get('showSignup') === '1') openSignupModal();
+
+async function doSignup(){
+  const errEl = document.getElementById('suErr');
+  errEl.style.display = 'none';
+  const name  = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim();
+  const pw    = document.getElementById('suPassword').value;
+  const cpw   = document.getElementById('suConfirm').value;
+  const phone = document.getElementById('suPhone').value.trim();
+  const city  = document.getElementById('suCity').value.trim();
+  if(!name)  { mlShowErr('suErr','Please enter your full name.'); return; }
+  if(!email) { mlShowErr('suErr','Please enter your email address.'); return; }
+  if(!pw || pw.length < 6) { mlShowErr('suErr','Password must be at least 6 characters.'); return; }
+  if(pw !== cpw) { mlShowErr('suErr','Passwords do not match.'); return; }
+  mlSetBtn('suBtn', true);
+  try {
+    const r = await fetch('/signup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, email, password: pw, phone, city})
+    });
+    const d = await r.json();
+    if(d.success){
+      closeSignupModal();
+      const tb = document.getElementById('toastBox');
+      if(tb){
+        const id='t'+Date.now();
+        tb.insertAdjacentHTML('beforeend',`<div id="${id}" style="background:#10b981;color:#fff;padding:12px 18px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.2);display:flex;align-items:center;gap:10px;font-size:.9rem;font-weight:500;min-width:260px;"><span style="flex:1">Account created! Redirecting…</span><button onclick="document.getElementById('${id}').remove()" style="background:none;border:none;color:#fff;cursor:pointer;">&times;</button></div>`);
+        setTimeout(()=>{ const el=document.getElementById(id); if(el)el.remove(); },4000);
+      }
+      setTimeout(() => location.href = d.redirect, 700);
+    } else {
+      mlShowErr('suErr', d.message || 'Signup failed. Please try again.');
+      mlSetBtn('suBtn', false);
+    }
+  } catch {
+    mlShowErr('suErr', 'Network error. Please try again.');
+    mlSetBtn('suBtn', false);
+  }
+}
+
+// Enter key on last confirm field triggers signup
+document.getElementById('suConfirm')?.addEventListener('keypress', e => {
+  if(e.key === 'Enter') doSignup();
+});
+</script>
+
+<script>
+// ── Login Modal open/close ──
+function openLoginModal(){
+  mlGoto('stepLogin');
+  const bg=document.getElementById('authModalBg');
+  bg.style.display='flex';
+  setTimeout(()=>document.getElementById('mlEmail')?.focus(),80);
+}
+function closeLoginModal(){ document.getElementById('authModalBg').style.display='none'; }
+document.getElementById('authModalBg').addEventListener('click',function(e){ if(e.target===this)closeLoginModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')closeLoginModal(); });
+
+// Auto-open if URL has ?showLogin=1
+const _urlParams = new URLSearchParams(location.search);
+if(_urlParams.get('showLogin') === '1') openLoginModal();
+
+// ── Step navigation ──
+function mlGoto(step){
+  document.querySelectorAll('.ml-step').forEach(s=>s.classList.remove('on'));
+  document.getElementById(step)?.classList.add('on');
+  const titles={ stepLogin:['Welcome Back','Sign in to your CineBook account'],
+    stepFP1:['Forgot Password','Enter your email to receive OTP'],
+    stepFP2:['Enter OTP','Check your email for the 6-digit code'],
+    stepFP3:['New Password','Create your new password'] };
+  const t=titles[step]||['CineBook',''];
+  document.getElementById('mlHeadTitle').textContent=t[0];
+  document.getElementById('mlHeadSub').textContent=t[1];
+}
+
+// ── Utilities ──
+function mlToggleEye(id,btn){
+  const inp=document.getElementById(id);
+  inp.type=inp.type==='text'?'password':'text';
+  btn.innerHTML=inp.type==='text'?'<i class="fas fa-eye-slash"></i>':'<i class="fas fa-eye"></i>';
+}
+function mlShowErr(id,msg){ const el=document.getElementById(id); if(!el)return; el.textContent=msg; el.style.display='block'; document.getElementById(id.replace('Err','Ok'))?.style.setProperty('display','none'); }
+function mlShowOk(id,msg){ const el=document.getElementById(id); if(!el)return; el.textContent=msg; el.style.display='block'; document.getElementById(id.replace('Ok','Err'))?.style.setProperty('display','none'); }
+function mlClearMsg(...ids){ ids.forEach(id=>{ const el=document.getElementById(id); if(el)el.style.display='none'; }); }
+function mlSetBtn(id,loading){ const b=document.getElementById(id); if(!b)return; b.disabled=loading; if(loading)b.insertAdjacentHTML('afterbegin','<span class="spinner-border spinner-border-sm me-2"></span>'); else b.querySelector('.spinner-border')?.remove(); }
+
+// ── Login ──
+async function mlDoLogin(){
+  mlClearMsg('loginErr');
+  const email=document.getElementById('mlEmail').value.trim();
+  const pw=document.getElementById('mlPassword').value;
+  if(!email||!pw){ mlShowErr('loginErr','Please enter email and password.'); return; }
+  mlSetBtn('mlLoginBtn',true);
+  try{
+    const r=await fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+    const d=await r.json();
+    if(d.success){ closeLoginModal(); window.location.href=d.redirect; }
+    else{ mlShowErr('loginErr',d.message||'Invalid credentials.'); mlSetBtn('mlLoginBtn',false); }
+  }catch{ mlShowErr('loginErr','Network error. Please try again.'); mlSetBtn('mlLoginBtn',false); }
+}
+document.getElementById('mlPassword')?.addEventListener('keypress',e=>{ if(e.key==='Enter')mlDoLogin(); });
+document.getElementById('mlEmail')?.addEventListener('keypress',e=>{ if(e.key==='Enter')document.getElementById('mlPassword')?.focus(); });
+
+// ── Forgot Password – State ──
+let _fpEmail='', _fpOtp='';
+
+// Step 1: Send OTP
+async function mlFPSendOtp(resend=false){
+  mlClearMsg('fp1Err','fp1Ok');
+  const email=(document.getElementById('fpEmail')?.value||'').trim();
+  if(!email){ mlShowErr('fp1Err','Please enter your email address.'); return; }
+  _fpEmail=email.toLowerCase();
+  mlSetBtn('fp1Btn',true);
+  try{
+    const r=await fetch('/forgot-password/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:_fpEmail})});
+    const d=await r.json();
+    if(d.success){
+      if(resend){ mlShowOk('fp2Ok','OTP resent successfully!'); }
+      else{
+        document.getElementById('fpEmailDisplay').textContent=_fpEmail;
+        mlGoto('stepFP2');
+        initOtpCells();
+      }
+    } else { mlShowErr('fp1Err',d.message||'Failed to send OTP.'); }
+  }catch{ mlShowErr('fp1Err','Network error.'); }
+  mlSetBtn('fp1Btn',false);
+}
+
+// OTP cell behaviour
+function initOtpCells(){
+  const cells=document.querySelectorAll('#otpRow .otp-cell');
+  cells.forEach((c,i)=>{
+    c.value='';
+    c.oninput=()=>{ c.value=c.value.replace(/\D/,''); if(c.value&&i<cells.length-1)cells[i+1].focus(); };
+    c.onkeydown=e=>{ if(e.key==='Backspace'&&!c.value&&i>0)cells[i-1].focus(); };
+    c.onpaste=e=>{
+      e.preventDefault();
+      const txt=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'');
+      [...txt].forEach((ch,j)=>{ if(cells[i+j])cells[i+j].value=ch; });
+      const next=Math.min(i+txt.length,cells.length-1); cells[next].focus();
+    };
+  });
+  setTimeout(()=>cells[0]?.focus(),80);
+}
+
+function getOtpValue(){
+  return [...document.querySelectorAll('#otpRow .otp-cell')].map(c=>c.value).join('');
+}
+
+// Step 2: Verify OTP
+async function mlFPVerifyOtp(){
+  mlClearMsg('fp2Err','fp2Ok');
+  _fpOtp=getOtpValue();
+  if(_fpOtp.length!==6){ mlShowErr('fp2Err','Please enter the complete 6-digit OTP.'); return; }
+  mlSetBtn('fp2Btn',true);
+  try{
+    const r=await fetch('/forgot-password/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:_fpEmail,otp:_fpOtp})});
+    const d=await r.json();
+    if(d.success){ mlShowOk('fp2Ok','OTP verified!'); setTimeout(()=>mlGoto('stepFP3'),600); }
+    else{ mlShowErr('fp2Err',d.message||'Invalid OTP.'); }
+  }catch{ mlShowErr('fp2Err','Network error.'); }
+  mlSetBtn('fp2Btn',false);
+}
+
+// Step 3: Reset password
+async function mlFPReset(){
+  mlClearMsg('fp3Err','fp3Ok');
+  const pw=document.getElementById('fpNewPw').value;
+  const cpw=document.getElementById('fpConfPw').value;
+  if(!pw||pw.length<6){ mlShowErr('fp3Err','Password must be at least 6 characters.'); return; }
+  if(pw!==cpw){ mlShowErr('fp3Err','Passwords do not match.'); return; }
+  mlSetBtn('fp3Btn',true);
+  try{
+    const r=await fetch('/forgot-password/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:_fpEmail,otp:_fpOtp,password:pw})});
+    const d=await r.json();
+    if(d.success){
+      mlShowOk('fp3Ok','Password reset! Redirecting to login…');
+      setTimeout(()=>{ mlGoto('stepLogin'); document.getElementById('mlEmail').value=_fpEmail; },1800);
+    } else { mlShowErr('fp3Err',d.message||'Reset failed.'); }
+  }catch{ mlShowErr('fp3Err','Network error.'); }
+  mlSetBtn('fp3Btn',false);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Booking Confirmed – CineBook{% endblock %}
+{% block extra_css %}
+<style>
+.cfm-page-wrap { min-height: calc(100vh - 70px); background: #06080f; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.cfm-card { background: #0b0f1a; border: 1px solid #1e2d48; border-radius: 20px; width: 100%; max-width: 480px; overflow: hidden; animation: cfmUp .45s cubic-bezier(.34,1.56,.64,1); }
+@keyframes cfmUp { from{transform:translateY(40px) scale(.95);opacity:0} to{transform:none;opacity:1} }
+.cfm-card-head { background: linear-gradient(135deg,#e5383b,#a00); padding: 28px 28px 22px; text-align: center; }
+.cfm-tick { width: 68px; height: 68px; background: rgba(255,255,255,.18); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 2rem; border: 3px solid rgba(255,255,255,.4); }
+.cfm-card-head h3 { color: #fff; font-weight: 900; margin: 0 0 5px; font-size: 1.4rem; }
+.cfm-card-head p { color: rgba(255,255,255,.72); font-size: .88rem; margin: 0; }
+.cfm-card-body { padding: 24px 26px 22px; }
+.cfm-ref-box { background: linear-gradient(135deg,#1a1200,#2a1f00); border: 2px dashed #ffd60a; border-radius: 12px; padding: 14px 18px; text-align: center; margin-bottom: 20px; }
+.cfm-ref-lbl { color: #8899bb; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px; }
+.cfm-ref-code { color: #ffd60a; font-size: 1.8rem; font-weight: 900; letter-spacing: 5px; }
+.cfm-dtbl { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+.cfm-dtbl tr td { padding: 9px 2px; border-bottom: 1px solid rgba(255,255,255,.06); font-size: .84rem; }
+.cfm-dtbl tr:last-child td { border-bottom: none; }
+.cfm-dtbl td.lbl { color: #8899bb; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; width: 42%; }
+.cfm-dtbl td.val { color: #f0f4ff; font-weight: 700; text-align: right; }
+.cfm-total-row { background: rgba(229,56,59,.1); border: 1px solid rgba(229,56,59,.3); border-radius: 10px; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.cfm-total-row .tl { color: #8899bb; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.cfm-total-row .ta { color: #e5383b; font-size: 1.4rem; font-weight: 900; }
+.cfm-email-note { background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.22); border-radius: 9px; padding: 11px 14px; color: #4ade80; font-size: .76rem; text-align: center; margin-bottom: 18px; display: flex; align-items: center; gap: 9px; justify-content: center; line-height: 1.5; }
+.cfm-actions { display: flex; flex-direction: column; gap: 10px; }
+.btn-dl-pdf { background: linear-gradient(135deg,#e5383b,#c00); color: #fff; border: none; padding: 14px 16px; border-radius: 11px; font-size: .92rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px; text-decoration: none; transition: all .22s; box-shadow: 0 4px 18px rgba(229,56,59,.35); }
+.btn-dl-pdf:hover { color: #fff; transform: translateY(-2px); box-shadow: 0 10px 28px rgba(229,56,59,.45); }
+.btn-home { background: rgba(255,255,255,.07); border: 1.5px solid rgba(255,255,255,.14); color: rgba(255,255,255,.8); padding: 13px 16px; border-radius: 10px; font-size: .87rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; transition: all .2s; }
+.btn-home:hover { background: rgba(255,255,255,.14); color: #fff; }
+.btn-bkgs { background: transparent; border: 1px solid rgba(255,255,255,.1); color: #8899bb; padding: 11px 16px; border-radius: 10px; font-size: .82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none; transition: all .2s; }
+.btn-bkgs:hover { color: #fff; border-color: rgba(255,255,255,.22); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="cfm-page-wrap">
+  <div class="cfm-card">
+    <div class="cfm-card-head">
+      <div class="cfm-tick">🎉</div>
+      <h3>Booking Confirmed!</h3>
+      <p>Your tickets are booked. Enjoy the show!</p>
+    </div>
+    <div class="cfm-card-body">
+      <div class="cfm-ref-box">
+        <div class="cfm-ref-lbl">Booking Reference</div>
+        <div class="cfm-ref-code">{{ booking.booking_ref }}</div>
+      </div>
+
+      <table class="cfm-dtbl">
+        <tr><td class="lbl">🎬 Movie</td><td class="val">{{ booking.movie_title }}</td></tr>
+        <tr><td class="lbl">🏢 Theatre</td><td class="val">{{ booking.theatre_name }}</td></tr>
+        <tr><td class="lbl">📍 City</td><td class="val">{{ booking.theatre_city }}</td></tr>
+        <tr><td class="lbl">📅 Date</td><td class="val">{{ booking.show_date.strftime('%d %b %Y') if booking.show_date else '—' }}</td></tr>
+        <tr><td class="lbl">⏰ Time</td><td class="val">{{ booking.show_time }}</td></tr>
+        <tr><td class="lbl">🎟 Tickets</td><td class="val">{{ booking.num_tickets }}</td></tr>
+        {% if booking.seat_numbers %}<tr><td class="lbl">🪑 Seats</td><td class="val">{{ booking.seat_numbers }}</td></tr>{% endif %}
+        <tr><td class="lbl">💳 Payment</td><td class="val">{{ booking.payment_method }}</td></tr>
+      </table>
+
+      <div class="cfm-total-row">
+        <span class="tl">Total Paid</span>
+        <span class="ta">₹{{ booking.total_amount | int }}</span>
+      </div>
+
+      <div class="cfm-email-note">
+        <i class="fas fa-paper-plane" style="font-size:1.1rem;flex-shrink:0;"></i>
+        <span>Booking confirmation &amp; e-ticket PDF sent to your registered email.</span>
+      </div>
+
+      <div class="cfm-actions">
+        <a href="{{ url_for('user.download_ticket_pdf', booking_id=booking.id) }}"
+           class="btn-dl-pdf" download>
+          <i class="fas fa-file-pdf"></i> Download Ticket PDF
+        </a>
+        <a href="{{ url_for('public.home') }}" class="btn-home">
+          <i class="fas fa-home"></i> Back to Home
+        </a>
+        <a href="{{ url_for('user.my_bookings') }}" class="btn-bkgs">
+          <i class="fas fa-ticket-alt"></i> My Bookings
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Admin – CineBook{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div id="toastBox" style="position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
+<div class="panel-body">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <div class="brand-icon"><i class="fas fa-film"></i></div>
+      <span>CineBook</span>
+    </div>
+    <div class="sb-label">Admin Panel</div>
+    <a href="{{ url_for('admin.dashboard') }}" class="sb-link {% if request.endpoint=='admin.dashboard' %}active{% endif %}"><i class="fas fa-tachometer-alt"></i>Dashboard</a>
+    <a href="{{ url_for('admin.movies') }}" class="sb-link {% if request.endpoint=='admin.movies' %}active{% endif %}"><i class="fas fa-film"></i>Movies</a>
+    <a href="{{ url_for('admin.theatres') }}" class="sb-link {% if request.endpoint=='admin.theatres' %}active{% endif %}"><i class="fas fa-building"></i>Theatres</a>
+    <a href="{{ url_for('admin.screens') }}" class="sb-link {% if request.endpoint=='admin.screens' %}active{% endif %}"><i class="fas fa-desktop"></i>Screens</a>
+    <a href="{{ url_for('admin.shows') }}" class="sb-link {% if request.endpoint=='admin.shows' %}active{% endif %}"><i class="fas fa-calendar-alt"></i>Shows</a>
+    <a href="{{ url_for('admin.theatre_owners') }}" class="sb-link {% if request.endpoint=='admin.theatre_owners' %}active{% endif %}"><i class="fas fa-user-tie"></i>Theatre Owners</a>
+    <a href="{{ url_for('admin.users') }}" class="sb-link {% if request.endpoint=='admin.users' %}active{% endif %}"><i class="fas fa-users"></i>App Users</a>
+    <a href="{{ url_for('admin.carousel') }}" class="sb-link {% if request.endpoint=='admin.carousel' %}active{% endif %}"><i class="fas fa-images"></i>Carousel Manager</a>
+    <a href="{{ url_for('admin.upcoming') }}" class="sb-link {% if request.endpoint=='admin.upcoming' %}active{% endif %}"><i class="fas fa-film"></i>Upcoming Movies</a>
+    <a href="{{ url_for('admin.analytics') }}" class="sb-link {% if request.endpoint=='admin.analytics' %}active{% endif %}"><i class="fas fa-chart-line"></i>Analytics</a>
+    <a href="{{ url_for('admin.messages') }}" class="sb-link {% if request.endpoint=='admin.messages' %}active{% endif %}" style="position:relative;">
+      <i class="fas fa-envelope"></i>Messages
+      <span class="sb-badge" id="sbUnreadBadge" style="display:none;">0</span>
+    </a>
+    <div class="sb-divider"></div>
+    <a href="{{ url_for('public.home') }}" class="sb-link"><i class="fas fa-globe"></i>Public Site</a>
+    <a href="{{ url_for('auth.logout') }}" class="sb-link danger-link"><i class="fas fa-sign-out-alt"></i>Logout</a>
+  </aside>
+
+  <div class="panel-main">
+    <div class="topbar">
+      <button class="btn btn-sm btn-outline-secondary" id="sbToggle"><i class="fas fa-bars"></i></button>
+      <span class="topbar-title">{% block page_title %}Dashboard{% endblock %}</span>
+      <div class="topbar-user">
+        <div class="avatar-sm">{{ session.get('user_name','A')[0].upper() }}</div>
+        <div class="d-none d-md-block">
+          <div class="fw-semibold small">{{ session.get('user_name','Admin') }}</div>
+          <div class="text-muted" style="font-size:11px">Administrator</div>
+        </div>
+      </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat,msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show mx-4 mt-3 rounded-3">
+          {{ msg }}<button class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="panel-content">{% block content %}{% endblock %}</div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% block extra_js %}{% endblock %}
+<style>
+.sb-badge {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  background: #e5383b; color: #fff; font-size: .62rem; font-weight: 800;
+  min-width: 18px; height: 18px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 5px; line-height: 1; animation: sbPulse 2s infinite;
+}
+@keyframes sbPulse { 0%,100%{box-shadow:0 0 0 0 rgba(229,56,59,.5)} 50%{box-shadow:0 0 0 5px rgba(229,56,59,0)} }
+</style>
+<script>
+(function pollUnread() {
+  function refresh() {
+    fetch('/admin/api/messages/unread-count')
+      .then(r => r.json())
+      .then(d => {
+        const badge = document.getElementById('sbUnreadBadge');
+        if (!badge) return;
+        if (d.count > 0) {
+          badge.textContent = d.count > 99 ? '99+' : d.count;
+          badge.style.display = 'flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      }).catch(() => {});
+  }
+  refresh();
+  setInterval(refresh, 30000); // poll every 30s
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Screens – Admin{% endblock %}
+{% block page_title %}Screens{% endblock %}
+{% block content %}
+
+<div class="ph">
+  <div>
+    <h4>Screen Management</h4>
+    <p>{{ total }} screen(s) across all theatres</p>
+  </div>
+  <button class="btn btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#addScreenModal">
+    <i class="fas fa-plus me-2"></i>Add Screen
+  </button>
+</div>
+
+<!-- Filter Bar -->
+<div class="pcard mb-3 p-3">
+  <form method="get" class="d-flex gap-3 align-items-end flex-wrap">
+    <div>
+      <label class="form-label small fw-semibold mb-1">Filter by Theatre</label>
+      <select name="theatre_id" class="form-select form-select-sm" style="min-width:220px" onchange="this.form.submit()">
+        <option value="">All Theatres</option>
+        {% for t in theatre_list %}
+        <option value="{{ t.theater_id }}" {% if theatre_filter==t.theater_id %}selected{% endif %}>{{ t.name }} – {{ t.city }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if theatre_filter %}
+    <a href="{{ url_for('admin.screens') }}" class="btn btn-sm btn-outline-secondary">Clear Filter</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="pcard">
+  <div class="pcard-head"><span>All Screens</span></div>
+  <div style="overflow-x:auto">
+    <table class="ptable">
+      <thead>
+        <tr>
+          <th>Screen #</th>
+          <th>Theatre</th>
+          <th>City</th>
+          <th>Total Seats</th>
+          <th>Shows Linked</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sc in screens %}
+        <tr>
+          <td><span class="bdg bdg-blue fw-bold">Screen #{{ sc.screen_number }}</span></td>
+          <td class="fw-semibold">{{ sc.theatre_name }}</td>
+          <td><span class="bdg bdg-yellow">{{ sc.city }}</span></td>
+          <td><i class="fas fa-chair text-muted me-1"></i>{{ sc.total_seats }}</td>
+          <td>
+            {% if sc.show_count > 0 %}
+              <span class="bdg bdg-green">{{ sc.show_count }} show(s)</span>
+            {% else %}
+              <span class="text-muted small">No shows</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn-panel btn-panel-outline btn-sm"
+                    onclick="deleteScreen('{{ sc.screen_id }}', {{ sc.show_count }})"
+                    {% if sc.show_count > 0 %}title="Has linked shows – cannot delete"{% endif %}>
+              <i class="fas fa-trash text-danger"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center py-5 text-muted">
+          <i class="fas fa-desktop fa-2x mb-2 d-block opacity-25"></i>
+          No screens found. Add a screen to get started.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ADD SCREEN MODAL -->
+<div class="modal fade bms-modal" id="addScreenModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-desktop me-2"></i>Add New Screen</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addScreenForm">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Theatre <span class="text-danger">*</span></label>
+            <select name="theater_id" id="screenTheatreSelect" class="form-select" required onchange="loadExistingScreens()">
+              <option value="">Select Theatre</option>
+              {% for t in theatre_list %}
+              <option value="{{ t.theater_id }}">{{ t.name }} – {{ t.city }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Existing screens info -->
+          <div id="existingScreensInfo" class="d-none mb-3 p-2 rounded" style="background:#fffbeb;border:1px solid #fcd34d;">
+            <i class="fas fa-info-circle text-warning me-2"></i>
+            <span id="existingScreensText" class="small"></span>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Screen Number <span class="text-danger">*</span></label>
+              <input type="number" name="screen_number" id="screenNumberInput" class="form-control" min="1" max="50" placeholder="e.g. 1" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Total Seats</label>
+              <input type="number" name="total_seats" class="form-control" value="150" min="10" max="1000" placeholder="e.g. 150">
+            </div>
+          </div>
+
+          <div class="alert alert-info small mt-3 mb-0 py-2">
+            <i class="fas fa-lightbulb me-1"></i>
+            After adding a screen, you can add shows to it from the <strong>Shows</strong> page.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="addScreenBtn" class="btn btn-primary fw-semibold" onclick="addScreen()">
+          <i class="fas fa-plus me-1"></i>Add Screen
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadExistingScreens() {
+  const theatreId = document.getElementById('screenTheatreSelect').value;
+  const infoBox   = document.getElementById('existingScreensInfo');
+  const infoText  = document.getElementById('existingScreensText');
+  const numInput  = document.getElementById('screenNumberInput');
+
+  if (!theatreId) { infoBox.classList.add('d-none'); return; }
+
+  try {
+    const res  = await fetch(`/admin/api/screens-by-theatre/${theatreId}`);
+    const data = await res.json();
+    if (data.length > 0) {
+      const nums = data.map(s => `#${s.number}`).join(', ');
+      infoText.textContent = `Existing screens: ${nums}. Next suggested: #${data.length + 1}`;
+      numInput.value = data.length + 1;
+      infoBox.classList.remove('d-none');
+    } else {
+      infoText.textContent = 'No screens yet. Add Screen #1 to begin.';
+      numInput.value = 1;
+      infoBox.classList.remove('d-none');
+    }
+  } catch(e) { infoBox.classList.add('d-none'); }
+}
+
+// Reset modal on open
+document.getElementById('addScreenModal').addEventListener('show.bs.modal', function () {
+  document.getElementById('addScreenForm').reset();
+  document.getElementById('existingScreensInfo').classList.add('d-none');
+});
+
+async function addScreen() {
+  const form = document.getElementById('addScreenForm');
+  const btn  = document.getElementById('addScreenBtn');
+  const orig = btn.innerHTML;
+
+  const theatreId    = document.getElementById('screenTheatreSelect').value;
+  const screenNumber = document.querySelector('[name=screen_number]').value;
+  const totalSeats   = document.querySelector('[name=total_seats]').value;
+
+  if (!theatreId)    { window.toast('Please select a theatre.', 'danger'); return; }
+  if (!screenNumber) { window.toast('Screen number is required.', 'danger'); return; }
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding…';
+
+  try {
+    const res = await fetch('/admin/screens/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theater_id: theatreId, screen_number: parseInt(screenNumber), total_seats: parseInt(totalSeats) })
+    });
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('addScreenModal')).hide();
+      setTimeout(() => location.reload(), 1200);
+    }
+  } catch { window.toast('Network error', 'danger'); }
+  btn.disabled = false; btn.innerHTML = orig;
+}
+
+async function deleteScreen(id, showCount) {
+  if (showCount > 0) {
+    window.toast(`Cannot delete: this screen has ${showCount} linked show(s). Delete shows first.`, 'danger');
+    return;
+  }
+  if (!confirm('Delete this screen? This cannot be undone.')) return;
+  try {
+    const res = await fetch(`/admin/screens/delete/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) setTimeout(() => location.reload(), 1200);
+  } catch { window.toast('Network error', 'danger'); }
+}
+</script>
+{% endblock %}

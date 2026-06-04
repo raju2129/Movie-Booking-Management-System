@@ -1,0 +1,364 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Messages – Admin{% endblock %}
+{% block page_title %}Messages Inbox{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ─── Layout ─── */
+.msg-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+.msg-toolbar select, .msg-toolbar input {
+  background:#1a2235; border:1.5px solid #2a3550; border-radius:9px;
+  color:#fff; padding:8px 14px; font-size:.84rem; outline:none; transition:border-color .2s;
+}
+.msg-toolbar select:focus, .msg-toolbar input:focus { border-color:#e5383b; }
+.msg-toolbar select option { background:#1a2235; }
+
+/* Stats bar */
+.msg-stats { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.msg-stat { background:#0e1420; border:1.5px solid #1a2235; border-radius:12px; padding:14px 20px; flex:1; min-width:120px; text-align:center; }
+.msg-stat .num { font-size:1.6rem; font-weight:900; color:#fff; }
+.msg-stat .lbl { font-size:.72rem; color:rgba(255,255,255,.4); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
+.msg-stat.unread .num { color:#e5383b; }
+.msg-stat.replied .num { color:#4ade80; }
+.msg-stat.read .num { color:#60a5fa; }
+
+/* Message cards */
+.msg-card {
+  background:#0e1420; border:1.5px solid #1a2235; border-radius:14px;
+  margin-bottom:12px; overflow:hidden; transition:border-color .2s;
+}
+.msg-card:hover { border-color:rgba(229,56,59,.35); }
+.msg-card.unread { border-left:3px solid #e5383b; }
+.msg-card.replied { border-left:3px solid #4ade80; }
+
+.msg-header {
+  display:flex; align-items:center; gap:14px; padding:16px 20px;
+  cursor:pointer; user-select:none;
+}
+.msg-avatar {
+  width:42px; height:42px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg,#e5383b,#c00);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:1rem; color:#fff;
+}
+.msg-meta { flex:1; min-width:0; }
+.msg-name { font-weight:700; color:#fff; font-size:.9rem; }
+.msg-email { color:rgba(255,255,255,.4); font-size:.76rem; }
+.msg-subject { color:rgba(255,255,255,.7); font-size:.82rem; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:320px; }
+.msg-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+.msg-time { font-size:.72rem; color:rgba(255,255,255,.35); }
+.msg-chevron { color:rgba(255,255,255,.3); transition:transform .25s; font-size:.75rem; }
+.msg-card.open .msg-chevron { transform:rotate(180deg); }
+
+/* Category chips */
+.cat-chip {
+  display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px;
+  font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.3px;
+}
+.cat-general   { background:rgba(96,165,250,.15); color:#60a5fa; }
+.cat-booking   { background:rgba(251,191,36,.12); color:#fbbf24; }
+.cat-payment   { background:rgba(229,56,59,.15);  color:#e5383b; }
+.cat-refund    { background:rgba(229,56,59,.15);  color:#e5383b; }
+.cat-bug       { background:rgba(168,85,247,.15); color:#a855f7; }
+.cat-suggestion{ background:rgba(20,184,166,.15); color:#14b8a6; }
+.cat-compliment{ background:rgba(74,222,128,.15); color:#4ade80; }
+
+/* Star rating */
+.stars { color:#ffd60a; font-size:.85rem; letter-spacing:1px; }
+.stars .empty { color:rgba(255,255,255,.18); }
+
+/* Message body (expandable) */
+.msg-body { display:none; border-top:1px solid #1a2235; padding:20px; }
+.msg-card.open .msg-body { display:block; }
+.msg-text {
+  background:#070b14; border:1.5px solid #1a2235; border-radius:10px;
+  padding:16px; color:rgba(255,255,255,.75); font-size:.87rem; line-height:1.7;
+  white-space:pre-wrap; margin-bottom:16px;
+}
+.reply-box {
+  background:#0a1628; border:1.5px solid #2a3550; border-radius:10px;
+  padding:14px; margin-bottom:14px;
+}
+.reply-box strong { color:#4ade80; font-size:.8rem; display:block; margin-bottom:6px; }
+.reply-box p { color:rgba(255,255,255,.6); font-size:.84rem; margin:0; white-space:pre-wrap; }
+.reply-input {
+  width:100%; background:#1a2235; border:1.5px solid #2a3550; border-radius:9px;
+  color:#fff; padding:12px 14px; font-size:.85rem; resize:vertical; min-height:90px;
+  outline:none; transition:border-color .2s; box-sizing:border-box;
+}
+.reply-input::placeholder { color:#4a5568; }
+.reply-input:focus { border-color:#e5383b; }
+
+/* Action buttons */
+.msg-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.btn-reply {
+  background:linear-gradient(135deg,#e5383b,#c00); color:#fff; border:none;
+  padding:9px 18px; border-radius:8px; font-weight:700; font-size:.82rem;
+  cursor:pointer; display:flex; align-items:center; gap:6px; transition:all .2s;
+}
+.btn-reply:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(229,56,59,.35); }
+.btn-mark-read {
+  background:#1a2235; color:rgba(255,255,255,.65); border:1.5px solid #2a3550;
+  padding:8px 15px; border-radius:8px; font-weight:600; font-size:.8rem;
+  cursor:pointer; display:flex; align-items:center; gap:6px; transition:all .2s;
+}
+.btn-mark-read:hover { border-color:#60a5fa; color:#60a5fa; }
+.btn-delete {
+  background:rgba(229,56,59,.1); color:#e5383b; border:1.5px solid rgba(229,56,59,.25);
+  padding:8px 15px; border-radius:8px; font-weight:600; font-size:.8rem;
+  cursor:pointer; display:flex; align-items:center; gap:6px; transition:all .2s; margin-left:auto;
+}
+.btn-delete:hover { background:rgba(229,56,59,.2); border-color:#e5383b; }
+
+/* Empty state */
+.empty-inbox { text-align:center; padding:60px 20px; color:rgba(255,255,255,.28); }
+.empty-inbox i { font-size:3.5rem; display:block; margin-bottom:16px; opacity:.35; }
+.empty-inbox h5 { color:rgba(255,255,255,.5); font-size:1rem; margin-bottom:8px; }
+.empty-inbox p { font-size:.84rem; }
+
+/* Pagination */
+.pg-row { display:flex; justify-content:center; gap:6px; margin-top:20px; flex-wrap:wrap; }
+.pg-btn {
+  background:#1a2235; border:1.5px solid #2a3550; color:rgba(255,255,255,.6);
+  padding:7px 14px; border-radius:8px; font-size:.82rem; text-decoration:none;
+  transition:all .2s;
+}
+.pg-btn:hover, .pg-btn.active { background:#e5383b; border-color:#e5383b; color:#fff; }
+.pg-btn.disabled { opacity:.3; pointer-events:none; }
+
+/* Toast */
+.adm-toast {
+  position:fixed; bottom:24px; right:24px; background:#1a2235; border:1.5px solid #2a3550;
+  border-radius:12px; padding:14px 20px; color:#fff; font-size:.85rem; font-weight:600;
+  z-index:9999; display:flex; align-items:center; gap:10px;
+  box-shadow:0 8px 30px rgba(0,0,0,.5); animation:toastIn .3s ease;
+  max-width:320px;
+}
+@keyframes toastIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats Bar -->
+<div class="msg-stats">
+  <div class="msg-stat unread">
+    <div class="num">{{ msgs|selectattr('status','eq','unread')|list|length if msgs else unread_count }}</div>
+    <div class="lbl">Unread</div>
+  </div>
+  <div class="msg-stat read">
+    <div class="num" style="color:#60a5fa;">{{ total }}</div>
+    <div class="lbl">Total</div>
+  </div>
+  <div class="msg-stat replied">
+    <div class="num">{{ msgs|selectattr('status','eq','replied')|list|length if msgs else 0 }}</div>
+    <div class="lbl">Replied</div>
+  </div>
+</div>
+
+<!-- Toolbar -->
+<form method="get" class="msg-toolbar">
+  <select name="status" onchange="this.form.submit()">
+    <option value="" {% if not status_filter %}selected{% endif %}>All Status</option>
+    <option value="unread"  {% if status_filter=='unread'  %}selected{% endif %}>🔴 Unread</option>
+    <option value="read"    {% if status_filter=='read'    %}selected{% endif %}>✅ Read</option>
+    <option value="replied" {% if status_filter=='replied' %}selected{% endif %}>💬 Replied</option>
+  </select>
+  <select name="category" onchange="this.form.submit()">
+    <option value="" {% if not category_filter %}selected{% endif %}>All Categories</option>
+    {% for c in categories %}
+    <option value="{{ c }}" {% if c==category_filter %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+  <span style="color:rgba(255,255,255,.35);font-size:.82rem;margin-left:auto;">
+    {{ total }} message{% if total!=1 %}s{% endif %}
+    {% if status_filter or category_filter %}filtered{% endif %}
+  </span>
+  {% if status_filter or category_filter %}
+  <a href="{{ url_for('admin.messages') }}" style="color:#e5383b;font-size:.82rem;text-decoration:none;">
+    <i class="fas fa-times me-1"></i>Clear filters
+  </a>
+  {% endif %}
+</form>
+
+<!-- Message Cards -->
+{% if msgs %}
+  {% for m in msgs %}
+  <div class="msg-card {{ m.status }}" id="card-{{ m.id }}">
+    <div class="msg-header" onclick="toggleCard({{ m.id }})">
+      <div class="msg-avatar">{{ m.name[0].upper() }}</div>
+      <div class="msg-meta">
+        <div class="msg-name">{{ m.name }}
+          {% if m.user_id %}
+            <span style="background:rgba(96,165,250,.1);color:#60a5fa;font-size:.65rem;padding:2px 7px;border-radius:8px;margin-left:6px;font-weight:600;">Registered User</span>
+          {% endif %}
+        </div>
+        <div class="msg-email">{{ m.email }}</div>
+        <div class="msg-subject">{{ m.subject or 'No subject' }}</div>
+      </div>
+      <div class="msg-right">
+        <div style="display:flex;gap:6px;align-items:center;">
+          {% set cat_cls = {'General':'cat-general','Booking Issue':'cat-booking','Payment':'cat-payment','Refund':'cat-refund','App Bug':'cat-bug','Suggestion':'cat-suggestion','Compliment':'cat-compliment'} %}
+          <span class="cat-chip {{ cat_cls.get(m.category,'cat-general') }}">{{ m.category }}</span>
+          <span style="font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:8px;
+            {% if m.status=='unread' %}background:rgba(229,56,59,.15);color:#e5383b;
+            {% elif m.status=='replied' %}background:rgba(74,222,128,.12);color:#4ade80;
+            {% else %}background:#1a2235;color:rgba(255,255,255,.4);{% endif %}">
+            {{ m.status|capitalize }}
+          </span>
+        </div>
+        {% if m.rating %}
+        <div class="stars">
+          {{ '★' * m.rating }}<span class="empty">{{ '★' * (5 - m.rating) }}</span>
+        </div>
+        {% endif %}
+        <div class="msg-time">{{ m.created_at.strftime('%d %b %Y, %H:%M') }}</div>
+        <i class="fas fa-chevron-down msg-chevron"></i>
+      </div>
+    </div>
+
+    <!-- Expandable body -->
+    <div class="msg-body">
+      <div class="msg-text">{{ m.message }}</div>
+
+      {% if m.admin_reply %}
+      <div class="reply-box">
+        <strong><i class="fas fa-reply me-2"></i>Your Reply — {{ m.replied_at.strftime('%d %b %Y, %H:%M') if m.replied_at else '' }}</strong>
+        <p>{{ m.admin_reply }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Reply textarea -->
+      <textarea class="reply-input mb-3" id="reply-{{ m.id }}" placeholder="Type your reply to {{ m.name }}…">{{ m.admin_reply or '' }}</textarea>
+
+      <div class="msg-actions">
+        <button class="btn-reply" onclick="sendReply({{ m.id }})">
+          <i class="fas fa-paper-plane"></i> {{ 'Update Reply' if m.admin_reply else 'Send Reply' }}
+        </button>
+        {% if m.status != 'read' and m.status != 'replied' %}
+        <button class="btn-mark-read" onclick="markRead({{ m.id }})">
+          <i class="fas fa-check-double"></i> Mark as Read
+        </button>
+        {% endif %}
+        <button class="btn-delete" onclick="deleteMsg({{ m.id }})">
+          <i class="fas fa-trash-alt"></i> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="pg-row">
+    <a href="?page={{ page-1 }}&status={{ status_filter }}&category={{ category_filter }}" class="pg-btn {% if page==1 %}disabled{% endif %}">
+      <i class="fas fa-chevron-left"></i>
+    </a>
+    {% for p in range(1, total_pages+1) %}
+      {% if p==page or p==1 or p==total_pages or (p>=page-2 and p<=page+2) %}
+        <a href="?page={{ p }}&status={{ status_filter }}&category={{ category_filter }}" class="pg-btn {% if p==page %}active{% endif %}">{{ p }}</a>
+      {% elif p==page-3 or p==page+3 %}
+        <span class="pg-btn disabled">…</span>
+      {% endif %}
+    {% endfor %}
+    <a href="?page={{ page+1 }}&status={{ status_filter }}&category={{ category_filter }}" class="pg-btn {% if page==total_pages %}disabled{% endif %}">
+      <i class="fas fa-chevron-right"></i>
+    </a>
+  </div>
+  {% endif %}
+
+{% else %}
+<div class="empty-inbox">
+  <i class="fas fa-inbox"></i>
+  <h5>No messages found</h5>
+  <p>{% if status_filter or category_filter %}Try clearing your filters.{% else %}When users submit feedback from the Contact page, their messages will appear here.{% endif %}</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle expand/collapse of a message card
+function toggleCard(id) {
+  const card = document.getElementById('card-' + id);
+  const isOpen = card.classList.contains('open');
+  // Close all others
+  document.querySelectorAll('.msg-card.open').forEach(c => c.classList.remove('open'));
+  if (!isOpen) {
+    card.classList.add('open');
+    // Auto mark as read when opened
+    if (card.classList.contains('unread')) {
+      markReadSilent(id, card);
+    }
+  }
+}
+
+function markReadSilent(id, card) {
+  fetch('/admin/messages/' + id + '/read', { method:'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        card.classList.remove('unread');
+        card.classList.add('read');
+        // Update status badge inside
+        const statusBadge = card.querySelector('.msg-right span:last-of-type');
+      }
+    }).catch(() => {});
+}
+
+function markRead(id) {
+  fetch('/admin/messages/' + id + '/read', { method:'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        showToast('✅ Marked as read');
+        setTimeout(() => location.reload(), 700);
+      }
+    });
+}
+
+function sendReply(id) {
+  const text = document.getElementById('reply-' + id).value.trim();
+  if (!text) { showToast('⚠️ Reply cannot be empty', true); return; }
+  fetch('/admin/messages/' + id + '/reply', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ reply: text })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      showToast('💬 Reply saved successfully!');
+      setTimeout(() => location.reload(), 900);
+    } else {
+      showToast(d.message || 'Error saving reply', true);
+    }
+  });
+}
+
+function deleteMsg(id) {
+  if (!confirm('Delete this message? This cannot be undone.')) return;
+  fetch('/admin/messages/' + id + '/delete', { method:'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        const card = document.getElementById('card-' + id);
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(20px)';
+        card.style.transition = 'all .3s';
+        setTimeout(() => { card.remove(); showToast('🗑️ Message deleted'); }, 300);
+      }
+    });
+}
+
+function showToast(msg, isErr=false) {
+  const t = document.createElement('div');
+  t.className = 'adm-toast';
+  t.style.borderColor = isErr ? '#e5383b' : '#2a3550';
+  t.innerHTML = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .4s'; setTimeout(()=>t.remove(),400); }, 2500);
+}
+</script>
+{% endblock %}

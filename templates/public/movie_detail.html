@@ -1,0 +1,575 @@
+{% extends "base.html" %}
+{% block title %}{{ movie.title }} – CineBook{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+  --cb-red: #e5383b;
+  --cb-red2: #ff5e36;
+  --cb-red-glow: rgba(229,56,59,.35);
+  --cb-bg: #06080f;
+  --cb-bg2: #0b0f1a;
+  --cb-bg3: #111827;
+  --cb-card: #141c2e;
+  --cb-border: rgba(255,255,255,.07);
+  --cb-text: #f0f4ff;
+  --cb-muted: rgba(255,255,255,.5);
+  --cb-gold: #ffd60a;
+}
+body { background: var(--cb-bg); color: var(--cb-text); }
+
+/* ── CINEMATIC HERO ── */
+.detail-hero-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 400px;
+  overflow: hidden;
+  background: #060810;
+  display: flex;
+  align-items: center;
+}
+.detail-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center 20%;
+  filter: brightness(0.38) saturate(1.2);
+  transform: scale(1.05);
+  transition: transform 8s ease;
+}
+.detail-hero-bg.loaded { transform: scale(1); }
+.detail-hero-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(6,8,15,.97) 0%, rgba(6,8,15,.68) 44%, rgba(6,8,15,.08) 100%),
+    linear-gradient(0deg, rgba(6,8,15,.92) 0%, rgba(6,8,15,.10) 55%, transparent 100%);
+}
+
+/* Share button */
+.detail-share-btn {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.10);
+  border: 1.5px solid rgba(255,255,255,.25);
+  color: #fff;
+  padding: 9px 20px;
+  border-radius: 9px;
+  font-size: .87rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .2s;
+  backdrop-filter: blur(12px);
+}
+.detail-share-btn:hover { background: rgba(255,255,255,.2); color: #fff; }
+
+.detail-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  gap: 36px;
+  padding: 56px 52px 56px;
+  max-width: 1300px;
+  width: 100%;
+}
+@media(max-width:768px) {
+  .detail-content { padding: 44px 20px 40px; gap: 20px; flex-wrap: wrap; }
+}
+
+/* Poster */
+.detail-poster-wrap {
+  flex: 0 0 195px;
+  position: relative;
+}
+.detail-poster-img {
+  width: 195px;
+  height: 278px;
+  object-fit: cover;
+  border-radius: 14px;
+  display: block;
+  box-shadow: 0 20px 56px rgba(0,0,0,.75);
+  border: 2px solid rgba(255,255,255,.13);
+}
+.detail-poster-ph {
+  width: 195px;
+  height: 278px;
+  border-radius: 14px;
+  background: linear-gradient(145deg,#0d1525,#1a2540);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: rgba(255,255,255,.3);
+  font-size: 2.5rem;
+  border: 2px solid rgba(255,255,255,.08);
+}
+.detail-poster-badge {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  text-align: center;
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(6px);
+  color: rgba(255,255,255,.85);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  padding: 7px;
+  border-radius: 0 0 12px 12px;
+  text-transform: uppercase;
+}
+@media(max-width:576px) {
+  .detail-poster-wrap { flex: 0 0 130px; }
+  .detail-poster-img, .detail-poster-ph { width: 130px; height: 186px; }
+}
+
+/* Info */
+.detail-info { flex: 1; min-width: 0; }
+.detail-title {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0 0 18px;
+  line-height: 1.08;
+  text-shadow: 0 4px 24px rgba(0,0,0,.5);
+}
+@media(max-width:768px) { .detail-title { font-size: 1.65rem; } }
+
+/* Rating box */
+.detail-rating-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0,0,0,.5);
+  border: 1.5px solid rgba(255,255,255,.13);
+  border-radius: 12px;
+  padding: 13px 20px;
+  margin-bottom: 18px;
+  max-width: 430px;
+  backdrop-filter: blur(10px);
+}
+.drb-left { display: flex; align-items: center; gap: 10px; }
+.drb-star { color: #ff6b9d; font-size: 1.3rem; }
+.drb-score { font-size: 1.45rem; font-weight: 900; color: #fff; }
+.drb-votes { color: rgba(255,255,255,.5); font-size: .8rem; font-weight: 500; }
+.drb-arrow { color: rgba(255,255,255,.35); }
+.drb-rate {
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,.25);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  text-decoration: none;
+}
+.drb-rate:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+/* Meta line */
+.detail-meta {
+  color: rgba(255,255,255,.75);
+  font-size: .92rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.detail-meta .dot { color: rgba(255,255,255,.28); }
+
+/* Format tags */
+.detail-formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 26px;
+  align-items: center;
+}
+.fmt-tag {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.16);
+  color: rgba(255,255,255,.78);
+  font-size: .74rem;
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 6px;
+}
+.lang-tag {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.2);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 800;
+  padding: 5px 16px;
+  border-radius: 6px;
+}
+
+/* Book Tickets CTA */
+.detail-book-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #e5383b, #c00);
+  color: #fff !important;
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 15px 44px;
+  border-radius: 10px;
+  text-decoration: none !important;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(229,56,59,.45);
+  transition: all .25s;
+  letter-spacing: .3px;
+}
+.detail-book-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 34px rgba(229,56,59,.55);
+}
+
+/* ── BODY ── */
+.detail-body {
+  background: var(--cb-bg);
+  padding: 40px 0 70px;
+}
+
+.shows-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.shows-title i { color: var(--cb-red); }
+
+.city-label {
+  color: rgba(255,255,255,.42);
+  font-size: .76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin: 22px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.city-label i { color: var(--cb-red); }
+
+.showtime-card {
+  background: #0f1624;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.showtime-card:hover { border-color: rgba(229,56,59,.3); box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+.stc-name { font-weight: 700; color: #fff; margin-bottom: 3px; font-size: .93rem; }
+.stc-loc { color: rgba(255,255,255,.36); font-size: .77rem; }
+.stc-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.time-badge {
+  background: rgba(255,255,255,.07);
+  border: 1.5px solid rgba(255,255,255,.14);
+  color: #fff;
+  font-weight: 800;
+  font-size: .85rem;
+  padding: 7px 15px;
+  border-radius: 8px;
+}
+.seats-ok { color: #34d399; font-size: .78rem; font-weight: 700; }
+.seats-few { color: #fbbf24; font-size: .78rem; font-weight: 700; }
+.seats-none { color: #f87171; font-size: .78rem; font-weight: 700; }
+.stc-price { font-weight: 800; color: var(--cb-red); font-size: .95rem; }
+.btn-book-show {
+  background: linear-gradient(135deg,var(--cb-red),#c00);
+  color: #fff !important;
+  padding: 9px 22px;
+  border-radius: 8px;
+  font-size: .82rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all .2s;
+  box-shadow: 0 3px 12px rgba(229,56,59,.3);
+  white-space: nowrap;
+}
+.btn-book-show:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(229,56,59,.45); }
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: rgba(255,255,255,.28);
+}
+.empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; color: rgba(255,255,255,.15); }
+.empty-state h5 { color: rgba(255,255,255,.45); margin-bottom: 8px; }
+
+/* Sidebar cards */
+.info-card {
+  background: #0f1624;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.info-card-head {
+  background: rgba(229,56,59,.1);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  padding: 13px 20px;
+  font-weight: 800;
+  font-size: .82rem;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.info-card-body { padding: 14px 20px; }
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  font-size: .84rem;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row .lbl { color: rgba(255,255,255,.36); font-weight: 600; }
+.detail-row .val { color: rgba(255,255,255,.85); font-weight: 700; text-align: right; }
+
+/* Reviews */
+.review-item {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.review-item:last-child { border-bottom: none; }
+.rev-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--cb-red); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; font-weight: 800; flex-shrink: 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set img_seed = movie.movie_id[:6] if movie.movie_id else 'movie1' %}
+
+<!-- CINEMATIC HERO -->
+<div class="detail-hero-wrap">
+  <div class="detail-hero-bg" id="heroBg"></div>
+  <div class="detail-hero-veil"></div>
+
+  <button class="detail-share-btn" onclick="shareMovie()">
+    <i class="fas fa-share-alt"></i> Share
+  </button>
+
+  <div class="detail-content">
+    <!-- Poster -->
+    <div class="detail-poster-wrap">
+      <img class="detail-poster-img"
+           id="detailPoster"
+           src="{% if movie_image_data %}{{ movie_image_data }}{% elif movie_image_url %}{{ movie_image_url }}{% else %}https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg{% endif %}"
+           alt="{{ movie.title }}"
+           loading="eager"
+           onerror="this.onerror=null;this.src='https://image.tmdb.org/t/p/w500/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg';this.onerror=function(){this.style.display='none';this.nextElementSibling.style.display='flex';}">
+      <div class="detail-poster-ph" style="display:none;">
+        <i class="fas fa-film"></i>
+        <span style="font-size:.65rem;text-align:center;">{{ movie.title }}</span>
+      </div>
+      <div class="detail-poster-badge">In Cinemas</div>
+    </div>
+
+    <!-- Info -->
+    <div class="detail-info">
+      <h1 class="detail-title">{{ movie.title }}</h1>
+
+      {% if movie.rating %}
+      <div class="detail-rating-box">
+        <div class="drb-left">
+          <span class="drb-star"><i class="fas fa-star"></i></span>
+          <span class="drb-score">{{ "%.1f"|format(movie.rating) }}/10</span>
+          <span class="drb-votes">({{ (movie.rating * 580)|int }}+ Votes)</span>
+          <span class="drb-arrow"><i class="fas fa-chevron-right"></i></span>
+        </div>
+        <a href="#" class="drb-rate">Rate now</a>
+      </div>
+      {% endif %}
+
+      <div class="detail-meta">
+        {% if movie.duration %}<span>{{ movie.duration // 60 }}h {{ movie.duration % 60 }}m</span>{% endif %}
+        {% if movie.genre %}<span class="dot">·</span><span>{{ movie.genre }}</span>{% endif %}
+        <span class="dot">·</span><span>UA13+</span>
+        {% if movie.release_date %}<span class="dot">·</span><span>{{ movie.release_date }}</span>{% endif %}
+      </div>
+
+      <div class="detail-formats">
+        <span class="fmt-tag">2D, 4DX, MX4D, IMAX 2D, ICE, +2</span>
+        {% if movie.language %}<span class="lang-tag">{{ movie.language }}</span>{% endif %}
+      </div>
+
+      {% if shows %}
+        {% if session.get('role') == 'user' %}
+          <a href="#shows-section" class="detail-book-btn">
+            <i class="fas fa-ticket-alt"></i> Book Tickets
+          </a>
+        {% else %}
+          <a href="#" onclick="openLoginModal();return false;" class="detail-book-btn">
+            <i class="fas fa-ticket-alt"></i> Book Tickets
+          </a>
+        {% endif %}
+      {% else %}
+        <button class="detail-book-btn" style="opacity:.5;cursor:not-allowed;">
+          <i class="fas fa-calendar-times"></i> No Shows Available
+        </button>
+      {% endif %}
+
+      {% if movie.description %}
+        <p style="color:rgba(255,255,255,.44);font-size:.88rem;line-height:1.7;margin-top:20px;max-width:540px;">
+          {{ movie.description[:230] }}{% if movie.description|length > 230 %}…{% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="detail-body">
+  <div class="container-fluid px-4">
+    <div class="row g-4">
+
+      <!-- Shows -->
+      <div class="col-lg-8" id="shows-section">
+        <div class="shows-title"><i class="fas fa-calendar-alt"></i> Available Shows</div>
+
+        {% if shows %}
+          {% set ns = namespace(cur_city='') %}
+          {% for s in shows %}
+            {% if s.city != ns.cur_city %}
+              {% set ns.cur_city = s.city %}
+              <div class="city-label"><i class="fas fa-map-marker-alt"></i>{{ s.city }}</div>
+            {% endif %}
+            <div class="showtime-card">
+              <div>
+                <div class="stc-name">{{ s.theatre_name }}</div>
+                <div class="stc-loc">{{ s.location }}</div>
+              </div>
+              <div class="stc-right">
+                <span class="time-badge">{{ s.start_time }}</span>
+                {% if s.available_seats > 20 %}
+                  <span class="seats-ok"><i class="fas fa-check-circle me-1"></i>{{ s.available_seats }} seats</span>
+                {% elif s.available_seats > 5 %}
+                  <span class="seats-few"><i class="fas fa-exclamation-circle me-1"></i>{{ s.available_seats }} seats</span>
+                {% else %}
+                  <span class="seats-none"><i class="fas fa-times-circle me-1"></i>{{ s.available_seats }} left</span>
+                {% endif %}
+                {% if s.price_per_ticket %}<span class="stc-price">₹{{ s.price_per_ticket|int }}</span>{% endif %}
+                {% if session.get('role') == 'user' %}
+                  <a href="{{ url_for('user.book_ticket', show_id=s.show_id) }}" class="btn-book-show">Book</a>
+                {% else %}
+                  <a href="#" onclick="openLoginModal();return false;" class="btn-book-show">Login to Book</a>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <i class="fas fa-calendar-times"></i>
+            <h5>No Shows Available</h5>
+            <p>Check back later for upcoming shows.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Sidebar -->
+      <div class="col-lg-4">
+        <div class="info-card">
+          <div class="info-card-head"><i class="fas fa-info-circle me-2"></i>Movie Info</div>
+          <div class="info-card-body">
+            {% if movie.genre %}<div class="detail-row"><span class="lbl">Genre</span><span class="val">{{ movie.genre }}</span></div>{% endif %}
+            {% if movie.language %}<div class="detail-row"><span class="lbl">Language</span><span class="val">{{ movie.language }}</span></div>{% endif %}
+            {% if movie.duration %}<div class="detail-row"><span class="lbl">Duration</span><span class="val">{{ movie.duration // 60 }}h {{ movie.duration % 60 }}m</span></div>{% endif %}
+            {% if movie.rating %}<div class="detail-row"><span class="lbl">Rating</span><span class="val" style="color:#ffd60a;">★ {{ "%.1f"|format(movie.rating) }}/10</span></div>{% endif %}
+            {% if movie.release_date %}<div class="detail-row"><span class="lbl">Released</span><span class="val">{{ movie.release_date }}</span></div>{% endif %}
+            <div class="detail-row"><span class="lbl">Certificate</span><span class="val">UA13+</span></div>
+          </div>
+        </div>
+
+        {% if reviews %}
+        <div class="info-card">
+          <div class="info-card-head"><i class="fas fa-star me-2"></i>User Reviews</div>
+          <div class="info-card-body" style="max-height:380px;overflow-y:auto;">
+            {% for r in reviews %}
+            <div class="review-item">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <div class="rev-avatar">{{ r.user_name[0].upper() if r.user_name else '?' }}</div>
+                <div>
+                  <div style="font-weight:700;font-size:.84rem;color:#fff;">{{ r.user_name or 'User' }}</div>
+                  <div style="color:#ffd60a;font-size:.7rem;">{% for _ in range(r.rating|int) %}<i class="fas fa-star"></i>{% endfor %}</div>
+                </div>
+              </div>
+              {% if r.review_text and r.review_text != 'None' %}
+                <p style="color:rgba(255,255,255,.43);font-size:.82rem;margin:0;line-height:1.5;">{{ r.review_text }}</p>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Preload the wide backdrop before revealing it — prevents blank grey flash
+  // Use the same poster for both the card and the hero background for visual consistency
+  var POSTER   = "{% if movie_image_data %}{{ movie_image_data }}{% elif movie_image_url %}{{ movie_image_url }}{% else %}https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg{% endif %}";
+  var FALLBACK = "https://image.tmdb.org/t/p/w500/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg";
+
+  function applyBg(url) {
+    var el = document.getElementById('heroBg');
+    if (!el) return;
+    el.style.backgroundImage = "url('" + url + "')";
+    setTimeout(function() { el.classList.add('loaded'); }, 60);
+  }
+
+  function tryLoad(url, onSuccess, onFail) {
+    var img = new Image();
+    img.onload  = function() { onSuccess(url); };
+    img.onerror = function() { onFail(); };
+    img.src = url;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Load poster; fallback to default if it fails
+    tryLoad(POSTER, applyBg, function() {
+      applyBg(FALLBACK);
+    });
+  });
+})();
+function shareMovie() {
+  if (navigator.share) {
+    navigator.share({ title: '{{ movie.title }}', text: 'Book tickets for {{ movie.title }}!', url: window.location.href });
+  } else {
+    navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied to clipboard!'));
+  }
+}
+</script>
+{% endblock %}

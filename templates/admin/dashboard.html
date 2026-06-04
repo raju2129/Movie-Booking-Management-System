@@ -1,0 +1,324 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Admin Dashboard – CineBook{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+<!-- Welcome Banner -->
+<div class="welcome-banner mb-4">
+  <div class="welcome-text">
+    <h5 class="mb-1">Welcome back, <strong>{{ session.get('user_name', 'Admin') }}</strong> 👋</h5>
+    <p class="mb-0 text-muted small">Here's what's happening with your platform today.</p>
+  </div>
+  <div class="welcome-date small text-muted">
+    <i class="fas fa-calendar-alt me-1"></i>
+    <span id="currentDate"></span>
+  </div>
+</div>
+
+<!-- KPI Cards – Light style matching reference image -->
+<div class="row g-3 mb-4">
+  <!-- Movies -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-blue" onclick="window.location='{{ url_for('admin.movies') }}'" style="cursor:pointer">
+      <div class="stat-top-row">
+        <div class="stat-icon-wrap stat-icon-blue"><i class="fas fa-film"></i></div>
+        <span class="stat-badge stat-badge-blue">Movies</span>
+      </div>
+      <div class="stat-number">{{ stats.total_movies }}</div>
+      <div class="stat-label">Total Movies</div>
+      <a href="{{ url_for('admin.movies') }}" class="stat-link stat-link-blue">
+        <i class="fas fa-arrow-right me-1"></i>Click to manage
+      </a>
+    </div>
+  </div>
+
+  <!-- Theatres -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-green" onclick="window.location='{{ url_for('admin.theatres') }}'" style="cursor:pointer">
+      <div class="stat-top-row">
+        <div class="stat-icon-wrap stat-icon-green"><i class="fas fa-building"></i></div>
+        <span class="stat-badge stat-badge-green">Theatres</span>
+      </div>
+      <div class="stat-number">{{ stats.total_theatres }}</div>
+      <div class="stat-label">Total Theatres</div>
+      <a href="{{ url_for('admin.theatres') }}" class="stat-link stat-link-green">
+        <i class="fas fa-arrow-right me-1"></i>Click to manage
+      </a>
+    </div>
+  </div>
+
+  <!-- Shows -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-orange" onclick="window.location='{{ url_for('admin.shows') }}'" style="cursor:pointer">
+      <div class="stat-top-row">
+        <div class="stat-icon-wrap stat-icon-orange"><i class="fas fa-calendar-play"></i></div>
+        <span class="stat-badge stat-badge-orange">Shows</span>
+      </div>
+      <div class="stat-number">{{ stats.total_shows }}</div>
+      <div class="stat-label">Total Shows</div>
+      <a href="{{ url_for('admin.shows') }}" class="stat-link stat-link-orange">
+        <i class="fas fa-arrow-right me-1"></i>Click to manage
+      </a>
+    </div>
+  </div>
+
+  <!-- Users -->
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card stat-card-red" onclick="window.location='{{ url_for('admin.users') }}'" style="cursor:pointer">
+      <div class="stat-top-row">
+        <div class="stat-icon-wrap stat-icon-red"><i class="fas fa-users"></i></div>
+        <span class="stat-badge stat-badge-red">Users</span>
+      </div>
+      <div class="stat-number">{{ stats.app_users }}</div>
+      <div class="stat-label">App Users</div>
+      <a href="{{ url_for('admin.users') }}" class="stat-link stat-link-red">
+        <i class="fas fa-arrow-right me-1"></i>Click to manage
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Carousel Quick Access -->
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="stat-card" style="background:linear-gradient(135deg,#1e2a3a,#0f3460);border:none;cursor:pointer;" onclick="window.location='{{ url_for('admin.carousel') }}'">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-14">
+          <div class="stat-icon-wrap" style="background:rgba(229,56,59,.2);color:#e5383b;width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">
+            <i class="fas fa-images"></i>
+          </div>
+          <div style="margin-left:16px;">
+            <div style="color:#fff;font-size:1.1rem;font-weight:800;">🎬 Homepage Carousel Manager</div>
+            <div style="color:rgba(255,255,255,.55);font-size:.85rem;margin-top:2px;">Manually pick movies, upload posters, set order &amp; labels for the hero carousel shown to all visitors.</div>
+          </div>
+        </div>
+        <a href="{{ url_for('admin.carousel') }}" class="btn btn-sm" style="background:linear-gradient(135deg,#e5383b,#c00);color:#fff;border:none;padding:10px 22px;border-radius:9px;font-weight:700;white-space:nowrap;">
+          <i class="fas fa-sliders-h me-2"></i>Manage Carousel
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Action Bar -->
+<div class="quick-actions mb-4">
+  <span class="qa-label"><i class="fas fa-bolt me-1"></i>Quick Actions</span>
+  <a href="{{ url_for('admin.movies') }}" class="qa-btn qa-btn-blue"><i class="fas fa-plus me-1"></i>Add Movie</a>
+  <a href="{{ url_for('admin.theatres') }}" class="qa-btn qa-btn-green"><i class="fas fa-plus me-1"></i>Add Theatre</a>
+  <a href="{{ url_for('admin.shows') }}" class="qa-btn qa-btn-orange"><i class="fas fa-plus me-1"></i>Add Show</a>
+  <a href="{{ url_for('admin.theatre_owners') }}" class="qa-btn qa-btn-purple"><i class="fas fa-user-plus me-1"></i>Add Owner</a>
+</div>
+
+<div class="row g-4">
+  <!-- Top Movies -->
+  <div class="col-lg-6">
+    <div class="pcard h-100">
+      <div class="pcard-head">
+        <span><i class="fas fa-fire text-danger me-2"></i>Top Movies by Shows</span>
+        <a href="{{ url_for('admin.movies') }}" class="btn-panel btn-panel-red">View All</a>
+      </div>
+      <div class="pcard-body p-0">
+        <table class="ptable">
+          <thead><tr><th>#</th><th>Movie</th><th>Shows</th></tr></thead>
+          <tbody>
+            {% for m in top_movies %}
+            <tr class="clickable-row" data-href="{{ url_for('admin.movies') }}">
+              <td><span class="bdg bdg-blue">{{ loop.index }}</span></td>
+              <td class="fw-semibold">{{ m.title }}</td>
+              <td><span class="bdg bdg-green">{{ m.show_count }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-4">No data yet</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Cities -->
+  <div class="col-lg-6">
+    <div class="pcard h-100">
+      <div class="pcard-head">
+        <span><i class="fas fa-map-marker-alt text-danger me-2"></i>Top Cities</span>
+        <a href="{{ url_for('admin.theatres') }}" class="btn-panel btn-panel-red">View All</a>
+      </div>
+      <div class="pcard-body p-0">
+        <table class="ptable">
+          <thead><tr><th>City</th><th>Theatres</th></tr></thead>
+          <tbody>
+            {% for c in top_cities %}
+            <tr>
+              <td class="fw-semibold"><i class="fas fa-city text-muted me-2"></i>{{ c.city }}</td>
+              <td><span class="bdg bdg-purple">{{ c.cnt }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="2" class="text-center text-muted py-4">No data yet</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Genre Distribution -->
+  <div class="col-lg-6">
+    <div class="pcard">
+      <div class="pcard-head"><span><i class="fas fa-chart-bar text-danger me-2"></i>Genre Distribution</span></div>
+      <div class="pcard-body">
+        {% for g in genre_dist %}
+        <div class="genre-row">
+          <span class="genre-name">{{ g.genre }}</span>
+          <div class="genre-bar-wrap">
+            <div class="genre-bar" data-width="{{ [((g.cnt / (genre_dist[0].cnt if genre_dist else 1))*100)|int, 100]|min }}" style="width:0%"></div>
+          </div>
+          <span class="genre-count">{{ g.cnt }}</span>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3">No genre data yet</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Theatre Owners -->
+  <div class="col-lg-6">
+    <div class="pcard">
+      <div class="pcard-head">
+        <span><i class="fas fa-user-tie text-danger me-2"></i>Theatre Owners</span>
+        <a href="{{ url_for('admin.theatre_owners') }}" class="btn-panel btn-panel-red">Manage</a>
+      </div>
+      <div class="pcard-body p-0">
+        <table class="ptable">
+          <thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for o in theatre_owners[:5] %}
+            <tr>
+              <td class="fw-semibold">{{ o.name }}</td>
+              <td class="small text-muted">{{ o.email }}</td>
+              <td>
+                <span class="bdg {% if o.is_active %}bdg-green{% else %}bdg-gray{% endif %}">
+                  {% if o.is_active %}<i class="fas fa-circle me-1" style="font-size:7px;vertical-align:middle"></i>{% endif %}
+                  {{ 'Active' if o.is_active else 'Inactive' }}
+                </span>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-4">No owners yet</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Messages Inbox Preview -->
+<div class="row g-4 mt-0">
+  <div class="col-12">
+    <div class="pcard">
+      <div class="pcard-head">
+        <span>
+          <i class="fas fa-envelope text-danger me-2"></i>Recent Messages
+          {% if unread_msg_count > 0 %}
+            <span style="background:#e5383b;color:#fff;font-size:.65rem;font-weight:800;padding:2px 8px;border-radius:10px;margin-left:8px;">{{ unread_msg_count }} NEW</span>
+          {% endif %}
+        </span>
+        <a href="{{ url_for('admin.messages') }}" class="btn-panel btn-panel-red">View Inbox</a>
+      </div>
+      <div class="pcard-body p-0">
+        {% if recent_messages %}
+        <table class="ptable">
+          <thead>
+            <tr>
+              <th style="width:22px;"></th>
+              <th>From</th>
+              <th>Category</th>
+              <th>Subject</th>
+              <th>Rating</th>
+              <th>Received</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in recent_messages %}
+            <tr class="clickable-row" data-href="{{ url_for('admin.messages') }}" style="{% if m.status=='unread' %}background:rgba(229,56,59,.05);{% endif %}">
+              <td>
+                {% if m.status == 'unread' %}
+                  <span style="width:8px;height:8px;background:#e5383b;border-radius:50%;display:inline-block;"></span>
+                {% elif m.status == 'replied' %}
+                  <i class="fas fa-reply" style="color:#4ade80;font-size:.7rem;"></i>
+                {% else %}
+                  <i class="fas fa-check" style="color:rgba(255,255,255,.25);font-size:.7rem;"></i>
+                {% endif %}
+              </td>
+              <td>
+                <div class="fw-semibold" style="font-size:.85rem;">{{ m.name }}</div>
+                <div style="color:rgba(255,255,255,.38);font-size:.72rem;">{{ m.email }}</div>
+              </td>
+              <td>
+                <span class="bdg {% if m.category in ['Payment','Refund'] %}bdg-red{% elif m.category=='Booking Issue' %}bdg-orange{% elif m.category=='Compliment' %}bdg-green{% else %}bdg-blue{% endif %}">
+                  {{ m.category }}
+                </span>
+              </td>
+              <td style="font-size:.83rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ m.subject or '—' }}</td>
+              <td>
+                {% if m.rating %}
+                  <span style="color:#ffd60a;font-size:.78rem;">{{ '★' * m.rating }}{{ '☆' * (5 - m.rating) }}</span>
+                {% else %}—{% endif %}
+              </td>
+              <td style="font-size:.78rem;color:rgba(255,255,255,.45);">{{ m.created_at.strftime('%d %b, %H:%M') }}</td>
+              <td>
+                <span class="bdg {% if m.status=='unread' %}bdg-red{% elif m.status=='replied' %}bdg-green{% else %}bdg-gray{% endif %}">
+                  {{ m.status|capitalize }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;padding:36px;color:rgba(255,255,255,.3);">
+          <i class="fas fa-inbox" style="font-size:2.5rem;display:block;margin-bottom:12px;opacity:.4;"></i>
+          <p style="font-size:.87rem;margin:0;">No messages yet. When users send feedback from the Contact page, they'll appear here.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Show current date
+  const d = new Date();
+  document.getElementById('currentDate').textContent = d.toLocaleDateString('en-IN', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  // Clickable table rows
+  document.querySelectorAll('.clickable-row').forEach(row => {
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', () => { window.location = row.dataset.href; });
+  });
+
+  // Animate stat numbers on load
+  document.querySelectorAll('.stat-number').forEach(el => {
+    const target = parseInt(el.textContent);
+    if (isNaN(target)) return;
+    let current = 0;
+    const step = Math.max(1, Math.ceil(target / 30));
+    const timer = setInterval(() => {
+      current = Math.min(current + step, target);
+      el.textContent = current;
+      if (current >= target) clearInterval(timer);
+    }, 40);
+  });
+
+  // Animate genre bars on load
+  setTimeout(() => {
+    document.querySelectorAll('.genre-bar').forEach(bar => {
+      bar.style.width = bar.dataset.width + '%';
+    });
+  }, 300);
+</script>
+{% endblock %}

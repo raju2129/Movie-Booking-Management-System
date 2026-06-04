@@ -1,0 +1,514 @@
+{% extends "theatre_owner/base_owner.html" %}
+{% block title %}Movies – Theatre Owner{% endblock %}
+{% block page_title %}Movies{% endblock %}
+{% block content %}
+
+<style>
+  /* BRIGHT / LIGHT THEME FOR MOVIES PAGE */
+  .mo-page-wrap {
+    background: #f4f6fb;
+    border-radius: 20px;
+    padding: 28px 28px 32px;
+    min-height: 80vh;
+  }
+  .mo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .mo-header-left h4 {
+    font-size: 1.45rem;
+    font-weight: 900;
+    color: #1a1a2e;
+    margin: 0 0 4px;
+  }
+  .mo-header-left p { font-size:.82rem; color:#6b7280; margin:0; }
+  .mo-add-btn {
+    background: linear-gradient(135deg, #e5383b, #c00);
+    color: #fff;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 12px;
+    font-size: .88rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all .22s;
+    box-shadow: 0 4px 16px rgba(229,56,59,.35);
+    text-decoration: none;
+  }
+  .mo-add-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(229,56,59,.5); color:#fff; }
+
+  /* Filter bar */
+  .mo-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .mo-search-wrap { position:relative; flex:1; min-width:200px; max-width:340px; }
+  .mo-search-wrap i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9ca3af; font-size:.85rem; pointer-events:none; }
+  .mo-search-wrap input {
+    width:100%; background:#f9fafb; border:1.5px solid #e5e7eb; border-radius:10px;
+    color:#111827; padding:9px 14px 9px 36px; font-size:.85rem; outline:none;
+    transition:border-color .2s,box-shadow .2s;
+  }
+  .mo-search-wrap input:focus { border-color:#e5383b; box-shadow:0 0 0 3px rgba(229,56,59,.12); background:#fff; }
+  .mo-search-wrap input::placeholder { color:#9ca3af; }
+
+  .mo-city-wrap { position:relative; min-width:170px; }
+  .mo-city-wrap i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9ca3af; font-size:.85rem; pointer-events:none; }
+  .mo-city-select {
+    width:100%; background:#f9fafb; border:1.5px solid #e5e7eb; border-radius:10px;
+    color:#111827; padding:9px 14px 9px 34px; font-size:.85rem; outline:none;
+    transition:border-color .2s,box-shadow .2s; appearance:none; cursor:pointer;
+  }
+  .mo-city-select:focus { border-color:#e5383b; box-shadow:0 0 0 3px rgba(229,56,59,.12); background:#fff; }
+
+  .mo-search-btn {
+    background:#e5383b; border:none; color:#fff; border-radius:10px;
+    padding:9px 18px; font-size:.82rem; font-weight:700; cursor:pointer;
+    transition:all .2s; white-space:nowrap;
+  }
+  .mo-search-btn:hover { background:#c00; }
+  .mo-clear-btn {
+    background:#f3f4f6; border:1.5px solid #e5e7eb; color:#6b7280;
+    border-radius:10px; padding:8px 14px; font-size:.78rem; font-weight:700;
+    cursor:pointer; text-decoration:none; display:inline-flex; align-items:center;
+    gap:5px; transition:all .2s; white-space:nowrap;
+  }
+  .mo-clear-btn:hover { background:#e5e7eb; color:#374151; }
+  .mo-count-badge {
+    margin-left:auto; background:#f3f4f6; border:1px solid #e5e7eb;
+    border-radius:20px; padding:5px 14px; font-size:.75rem; font-weight:700;
+    color:#6b7280; white-space:nowrap;
+  }
+  .mo-count-badge span { color:#e5383b; }
+
+  /* Active filter pills */
+  .mo-active-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .mo-filter-pill {
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(229,56,59,.08); border:1.5px solid rgba(229,56,59,.2);
+    color:#c00; border-radius:20px; padding:4px 12px; font-size:.75rem; font-weight:700;
+  }
+  .mo-filter-pill a { color:#c00; text-decoration:none; opacity:.7; }
+  .mo-filter-pill a:hover { opacity:1; }
+
+  /* Table card */
+  .mo-card {
+    background:#fff; border:1.5px solid #e5e7eb; border-radius:18px;
+    overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.06);
+  }
+  .mo-table-wrap { overflow-x:auto; }
+  table.mo-tbl { width:100%; border-collapse:collapse; min-width:680px; }
+  table.mo-tbl thead tr { background:linear-gradient(90deg,#fff5f5,#fff); border-bottom:2px solid #fde8e8; }
+  table.mo-tbl thead th { padding:13px 16px; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.6px; color:#9ca3af; white-space:nowrap; }
+  table.mo-tbl tbody tr { border-bottom:1px solid #f3f4f6; transition:background .15s; }
+  table.mo-tbl tbody tr:last-child { border-bottom:none; }
+  table.mo-tbl tbody tr:hover { background:#fafbff; }
+  table.mo-tbl tbody td { padding:13px 16px; font-size:.83rem; color:#374151; vertical-align:middle; }
+  .mo-title-cell { font-weight:700; color:#111827; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mo-id-badge { display:inline-block; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:6px; padding:2px 8px; font-size:.7rem; font-family:monospace; color:#6b7280; }
+  .mo-genre-tag { background:rgba(251,191,36,.12); border:1px solid rgba(251,191,36,.35); color:#b45309; border-radius:6px; padding:2px 9px; font-size:.72rem; font-weight:700; }
+  .mo-lang-tag { background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.25); color:#4f46e5; border-radius:6px; padding:2px 9px; font-size:.72rem; font-weight:700; }
+  .mo-rating { color:#d97706; font-weight:800; font-size:.82rem; }
+  .mo-del-btn {
+    background:rgba(239,68,68,.07); border:1.5px solid rgba(239,68,68,.2); color:#dc2626;
+    border-radius:8px; padding:5px 11px; font-size:.75rem; cursor:pointer;
+    transition:all .18s; white-space:nowrap; display:inline-flex; align-items:center; gap:5px;
+  }
+  .mo-del-btn:hover { background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.4); color:#b91c1c; }
+
+  /* Pagination */
+  .mo-pager { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-top:1.5px solid #f3f4f6; flex-wrap:wrap; gap:10px; background:#fafafa; }
+  .mo-pager-info { font-size:.78rem; color:#9ca3af; }
+  .mo-pager-nav { display:flex; gap:5px; }
+  .mo-pager-nav a,.mo-pager-nav span {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:32px; height:32px; border-radius:8px; font-size:.78rem; font-weight:700;
+    border:1.5px solid #e5e7eb; color:#6b7280; text-decoration:none;
+    transition:all .18s; padding:0 8px; background:#fff;
+  }
+  .mo-pager-nav a:hover { border-color:#e5383b; color:#e5383b; background:#fff5f5; }
+  .mo-pager-nav span.cur { background:#e5383b; border-color:#e5383b; color:#fff; }
+
+  /* Empty state */
+  .mo-empty { text-align:center; padding:64px 20px; }
+  .mo-empty-ico { font-size:3.5rem; opacity:.2; display:block; margin-bottom:16px; color:#374151; }
+  .mo-empty h5 { color:#374151; font-weight:800; margin-bottom:6px; }
+  .mo-empty p { color:#9ca3af; font-size:.82rem; margin:0; }
+
+  /* Modal */
+  .mo-overlay { display:none; position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,.6); backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:16px; }
+  .mo-overlay.open { display:flex; }
+  .mo-modal { background:#fff; border:1px solid #e5e7eb; border-radius:20px; width:100%; max-width:620px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.2); animation:moUp .35s cubic-bezier(.34,1.56,.64,1); max-height:90vh; overflow-y:auto; }
+  @keyframes moUp { from{transform:translateY(36px) scale(.95);opacity:0} to{transform:none;opacity:1} }
+  .mo-modal-hd { background:linear-gradient(135deg,#fff5f5,#fff); padding:22px 24px 18px; border-bottom:1.5px solid #fde8e8; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:2; }
+  .mo-modal-hd-inner { display:flex; align-items:center; gap:12px; }
+  .mo-modal-ico { width:42px; height:42px; border-radius:11px; background:linear-gradient(135deg,#e5383b,#8b0000); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(229,56,59,.3); flex-shrink:0; }
+  .mo-modal-hd h5 { color:#111827; font-weight:900; font-size:1rem; margin:0 0 2px; }
+  .mo-modal-hd p { color:#6b7280; font-size:.75rem; margin:0; }
+  .mo-modal-close { background:#f3f4f6; border:1px solid #e5e7eb; color:#6b7280; width:30px; height:30px; border-radius:50%; font-size:.8rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0; }
+  .mo-modal-close:hover { background:#e5e7eb; color:#111827; }
+  .mo-modal-body { padding:22px 24px 24px; background:#fff; }
+  .mo-field { margin-bottom:16px; }
+  .mo-label { display:block; font-size:.73rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#6b7280; margin-bottom:7px; }
+  .mo-label .req { color:#e5383b; margin-left:2px; }
+  .mo-input,.mo-select,.mo-textarea { width:100%; background:#f9fafb; border:1.5px solid #e5e7eb; border-radius:10px; color:#111827; padding:10px 14px; font-size:.87rem; outline:none; transition:border-color .2s,box-shadow .2s; box-sizing:border-box; }
+  .mo-input:focus,.mo-select:focus,.mo-textarea:focus { border-color:#e5383b; box-shadow:0 0 0 3px rgba(229,56,59,.12); background:#fff; }
+  .mo-input::placeholder,.mo-textarea::placeholder { color:#9ca3af; }
+  .mo-select option { background:#fff; color:#111827; }
+  .mo-textarea { resize:vertical; min-height:80px; }
+  .mo-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .mo-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  @media(max-width:520px){ .mo-row,.mo-row-3{ grid-template-columns:1fr; } }
+  .mo-msg { display:none; border-radius:9px; padding:10px 14px; font-size:.82rem; font-weight:700; margin-bottom:16px; align-items:center; gap:8px; }
+  .mo-msg.show { display:flex; }
+  .mo-msg.ok { background:rgba(34,197,94,.08); border:1px solid rgba(34,197,94,.3); color:#15803d; }
+  .mo-msg.err { background:rgba(229,56,59,.08); border:1px solid rgba(229,56,59,.25); color:#dc2626; }
+  .mo-modal-ft { display:flex; gap:10px; padding-top:6px; }
+  .mo-submit-btn { flex:1; background:linear-gradient(135deg,#e5383b,#c00); color:#fff; border:none; padding:12px; border-radius:11px; font-size:.9rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all .2s; box-shadow:0 4px 16px rgba(229,56,59,.25); }
+  .mo-submit-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 24px rgba(229,56,59,.4); }
+  .mo-submit-btn:disabled { opacity:.6; cursor:not-allowed; }
+  .mo-cancel-btn { padding:12px 18px; background:#f3f4f6; border:1.5px solid #e5e7eb; color:#374151; border-radius:11px; font-size:.85rem; font-weight:700; cursor:pointer; transition:all .2s; }
+  .mo-cancel-btn:hover { border-color:#d1d5db; color:#111827; }
+</style>
+
+<div class="mo-page-wrap">
+
+<!-- PAGE HEADER -->
+<div class="mo-header">
+  <div class="mo-header-left">
+    <h4><i class="fas fa-film" style="color:#e5383b;margin-right:10px;"></i>Movies</h4>
+    <p>Browse the full movie catalogue &amp; add new movies for scheduling</p>
+  </div>
+  <button class="mo-add-btn" onclick="openAddMovieModal()">
+    <i class="fas fa-plus"></i> Add Movie
+  </button>
+</div>
+
+<!-- FILTER BAR -->
+<div class="mo-filter-bar">
+  <!-- Search -->
+  <div class="mo-search-wrap">
+    <i class="fas fa-search"></i>
+    <input type="text" id="moSearchInput" placeholder="Search movies… (any case)"
+           value="{{ search }}" onkeydown="if(event.key==='Enter') doSearch()">
+  </div>
+
+  <!-- City filter -->
+  <div class="mo-city-wrap">
+    <i class="fas fa-map-marker-alt"></i>
+    <select class="mo-city-select" id="moCitySelect" onchange="doSearch()">
+      <option value="">All Cities</option>
+      {% for city in all_cities %}
+      <option value="{{ city }}" {% if city_filter == city %}selected{% endif %}>{{ city }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <button class="mo-search-btn" onclick="doSearch()">
+    <i class="fas fa-search me-1"></i> Search
+  </button>
+
+  {% if search or city_filter %}
+  <a href="{{ url_for('theatre_owner.my_movies') }}" class="mo-clear-btn">
+    <i class="fas fa-times"></i> Clear All
+  </a>
+  {% endif %}
+
+  <div class="mo-count-badge"><i class="fas fa-film me-1"></i><span>{{ total }}</span> movies</div>
+</div>
+
+<!-- Active filter pills -->
+{% if search or city_filter %}
+<div class="mo-active-filters">
+  {% if search %}
+  <span class="mo-filter-pill">
+    <i class="fas fa-search" style="font-size:.65rem;"></i>
+    "{{ search }}"
+    <a href="{{ url_for('theatre_owner.my_movies', city=city_filter) }}"><i class="fas fa-times"></i></a>
+  </span>
+  {% endif %}
+  {% if city_filter %}
+  <span class="mo-filter-pill">
+    <i class="fas fa-map-marker-alt" style="font-size:.65rem;"></i>
+    {{ city_filter }}
+    <a href="{{ url_for('theatre_owner.my_movies', search=search) }}"><i class="fas fa-times"></i></a>
+  </span>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- MOVIES TABLE CARD -->
+<div class="mo-card">
+  <div class="mo-table-wrap">
+    <table class="mo-tbl">
+      <thead>
+        <tr>
+          <th>Movie ID</th>
+          <th>Title</th>
+          <th>Genre</th>
+          <th>Language</th>
+          <th>Duration</th>
+          <th>Rating</th>
+          <th>Release Date</th>
+          <th style="text-align:center;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movies %}
+        <tr>
+          <td><span class="mo-id-badge">{{ m.movie_id }}</span></td>
+          <td><div class="mo-title-cell" title="{{ m.title }}">{{ m.title }}</div></td>
+          <td>
+            {% if m.genre %}<span class="mo-genre-tag">{{ m.genre }}</span>
+            {% else %}<span style="color:#d1d5db;">—</span>{% endif %}
+          </td>
+          <td>
+            {% if m.language %}<span class="mo-lang-tag">{{ m.language }}</span>
+            {% else %}<span style="color:#d1d5db;">—</span>{% endif %}
+          </td>
+          <td>
+            {% if m.duration %}
+              <span style="color:#374151;">{{ m.duration }}<span style="font-size:.7rem;color:#9ca3af;margin-left:2px;">min</span></span>
+            {% else %}<span style="color:#d1d5db;">—</span>{% endif %}
+          </td>
+          <td>
+            {% if m.rating %}
+              <span class="mo-rating"><i class="fas fa-star" style="font-size:.7rem;margin-right:3px;"></i>{{ "%.1f"|format(m.rating) }}</span>
+            {% else %}<span style="color:#d1d5db;">—</span>{% endif %}
+          </td>
+          <td style="color:#6b7280;font-size:.78rem;">{{ m.release_date or '—' }}</td>
+          <td style="text-align:center;">
+            <button class="mo-del-btn" onclick="deleteMovie('{{ m.movie_id }}', '{{ m.title|e }}')">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8">
+            <div class="mo-empty">
+              <i class="fas fa-film mo-empty-ico"></i>
+              <h5>No Movies Found</h5>
+              <p>
+                {% if search and city_filter %}No results for "{{ search }}" in {{ city_filter }}.
+                {% elif search %}No results for "{{ search }}". Search works for uppercase, lowercase or mixed case.
+                {% elif city_filter %}No movies are currently showing in {{ city_filter }}.
+                {% else %}Add your first movie using the button above.{% endif %}
+              </p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if total_pages > 1 %}
+  <div class="mo-pager">
+    <span class="mo-pager-info">Page {{ page }} of {{ total_pages }} &nbsp;·&nbsp; {{ total }} total movies</span>
+    <nav class="mo-pager-nav">
+      {% if page > 1 %}
+        <a href="?page={{ page-1 }}&search={{ search }}&city={{ city_filter }}"><i class="fas fa-chevron-left"></i></a>
+      {% endif %}
+      {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+        {% if p == page %}<span class="cur">{{ p }}</span>
+        {% else %}<a href="?page={{ p }}&search={{ search }}&city={{ city_filter }}">{{ p }}</a>{% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+        <a href="?page={{ page+1 }}&search={{ search }}&city={{ city_filter }}"><i class="fas fa-chevron-right"></i></a>
+      {% endif %}
+    </nav>
+  </div>
+  {% endif %}
+</div>
+
+</div><!-- /mo-page-wrap -->
+
+<!-- ADD MOVIE MODAL -->
+<div class="mo-overlay" id="addMovieOverlay" onclick="if(event.target===this)closeAddMovieModal()">
+  <div class="mo-modal" id="addMovieModal">
+    <div class="mo-modal-hd">
+      <div class="mo-modal-hd-inner">
+        <div class="mo-modal-ico">
+          <i class="fas fa-film" style="color:#fff;font-size:1rem;"></i>
+        </div>
+        <div>
+          <h5>Add New Movie</h5>
+          <p>Fill in the movie details below to add it to the catalogue</p>
+        </div>
+      </div>
+      <button class="mo-modal-close" onclick="closeAddMovieModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="mo-modal-body">
+      <div class="mo-msg" id="moMsgBox"></div>
+      <div class="mo-field">
+        <label class="mo-label"><i class="fas fa-heading me-1" style="color:#e5383b;"></i>Movie Title <span class="req">*</span></label>
+        <input type="text" class="mo-input" id="moTitle" placeholder="e.g. Pushpa 2: The Rule">
+      </div>
+      <div class="mo-row">
+        <div class="mo-field">
+          <label class="mo-label"><i class="fas fa-tag me-1" style="color:#e5383b;"></i>Genre</label>
+          <select class="mo-select" id="moGenre">
+            <option value="">Select Genre</option>
+            <option>Action</option><option>Comedy</option><option>Drama</option>
+            <option>Romance</option><option>Thriller</option><option>Horror</option>
+            <option>Science Fiction</option><option>Animation</option>
+            <option>Documentary</option><option>Crime</option>
+            <option>Fantasy</option><option>Adventure</option>
+          </select>
+        </div>
+        <div class="mo-field">
+          <label class="mo-label"><i class="fas fa-language me-1" style="color:#e5383b;"></i>Language</label>
+          <select class="mo-select" id="moLanguage">
+            <option value="">Select Language</option>
+            <option>Hindi</option><option>English</option><option>Telugu</option>
+            <option>Tamil</option><option>Malayalam</option><option>Kannada</option>
+            <option>Bengali</option><option>Marathi</option><option>Punjabi</option>
+          </select>
+        </div>
+      </div>
+      <div class="mo-row-3">
+        <div class="mo-field">
+          <label class="mo-label"><i class="fas fa-clock me-1" style="color:#e5383b;"></i>Duration (min)</label>
+          <input type="number" class="mo-input" id="moDuration" placeholder="e.g. 148" min="1" max="400">
+        </div>
+        <div class="mo-field">
+          <label class="mo-label"><i class="fas fa-star me-1" style="color:#e5383b;"></i>Rating (0–10)</label>
+          <input type="number" class="mo-input" id="moRating" placeholder="e.g. 8.2" min="0" max="10" step="0.1">
+        </div>
+        <div class="mo-field">
+          <label class="mo-label"><i class="fas fa-calendar me-1" style="color:#e5383b;"></i>Release Date</label>
+          <input type="date" class="mo-input" id="moReleaseDate">
+        </div>
+      </div>
+      <div class="mo-field">
+        <label class="mo-label"><i class="fas fa-align-left me-1" style="color:#e5383b;"></i>Description</label>
+        <textarea class="mo-textarea" id="moDescription" placeholder="Brief synopsis of the movie…"></textarea>
+      </div>
+      <div class="mo-modal-ft">
+        <button class="mo-submit-btn" id="moSubmitBtn" onclick="submitAddMovie()">
+          <i class="fas fa-plus"></i> Add Movie
+        </button>
+        <button class="mo-cancel-btn" onclick="closeAddMovieModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function doSearch() {
+  const q    = document.getElementById('moSearchInput').value.trim();
+  const city = document.getElementById('moCitySelect').value;
+  const url  = new URL(window.location.href);
+  // ILIKE on backend makes search case-insensitive (PUSHPA = pushpa = Pushpa)
+  if (q)    url.searchParams.set('search', q);
+  else      url.searchParams.delete('search');
+  if (city) url.searchParams.set('city', city);
+  else      url.searchParams.delete('city');
+  url.searchParams.delete('page');
+  window.location.href = url.toString();
+}
+
+function openAddMovieModal() {
+  clearMovieForm();
+  document.getElementById('addMovieOverlay').classList.add('open');
+  document.getElementById('moTitle').focus();
+}
+function closeAddMovieModal() {
+  document.getElementById('addMovieOverlay').classList.remove('open');
+}
+function clearMovieForm() {
+  ['moTitle','moDuration','moRating','moReleaseDate','moDescription'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('moGenre').value    = '';
+  document.getElementById('moLanguage').value = '';
+  setMoMsg('', '');
+}
+function setMoMsg(msg, type) {
+  const box = document.getElementById('moMsgBox');
+  box.className = 'mo-msg';
+  if (!msg) { box.classList.remove('show'); return; }
+  box.classList.add('show', type === 'ok' ? 'ok' : 'err');
+  const ico = type === 'ok' ? 'check-circle' : 'exclamation-circle';
+  box.innerHTML = `<i class="fas fa-${ico}"></i> ${msg}`;
+}
+
+async function submitAddMovie() {
+  const title = document.getElementById('moTitle').value.trim();
+  if (!title) { setMoMsg('Movie title is required.', 'err'); return; }
+  const payload = {
+    title,
+    genre:        document.getElementById('moGenre').value,
+    language:     document.getElementById('moLanguage').value,
+    duration:     document.getElementById('moDuration').value,
+    rating:       document.getElementById('moRating').value,
+    release_date: document.getElementById('moReleaseDate').value,
+    description:  document.getElementById('moDescription').value.trim(),
+  };
+  const btn = document.getElementById('moSubmitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding…';
+  try {
+    const res  = await fetch('/theatre-owner/movies/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setMoMsg(data.message, 'ok');
+      clearMovieForm();
+      window.toast && window.toast(data.message, 'success');
+      setTimeout(() => { closeAddMovieModal(); location.reload(); }, 1600);
+    } else {
+      setMoMsg(data.message || 'Failed to add movie. Please try again.', 'err');
+    }
+  } catch (e) {
+    setMoMsg('Network error. Please try again.', 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plus"></i> Add Movie';
+  }
+}
+
+async function deleteMovie(movieId, title) {
+  if (!confirm(`Delete "${title}"?\n\nThis will also remove all linked shows and reviews. This cannot be undone.`)) return;
+  try {
+    const res  = await fetch(`/theatre-owner/movies/delete/${movieId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await res.json();
+    window.toast && window.toast(data.message, data.success ? 'success' : 'danger');
+    if (data.success) setTimeout(() => location.reload(), 1200);
+  } catch (e) {
+    window.toast && window.toast('Network error. Please try again.', 'danger');
+  }
+}
+
+document.getElementById('moTitle')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAddMovie();
+});
+</script>
+{% endblock %}

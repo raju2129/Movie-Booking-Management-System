@@ -1,0 +1,370 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Shows – Admin{% endblock %}
+{% block page_title %}Shows{% endblock %}
+{% block content %}
+
+<div class="ph">
+  <div>
+    <h4>Shows</h4>
+    <p>{{ total }} shows in the system</p>
+  </div>
+  <button class="btn btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#addShowModal">
+    <i class="fas fa-plus me-2"></i>Add Show
+  </button>
+</div>
+
+<div class="pcard">
+  <div class="pcard-head"><span>All Shows</span></div>
+  <div style="overflow-x:auto">
+    <table class="ptable">
+      <thead>
+        <tr><th>Movie</th><th>Theatre</th><th>City</th><th>Screen</th><th>Date</th><th>Time</th><th>Price</th><th>Seats</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for s in shows %}
+        <tr>
+          <td class="fw-semibold">{{ s.movie_title }}</td>
+          <td>{{ s.theatre_name }}</td>
+          <td><span class="bdg bdg-blue">{{ s.city }}</span></td>
+          <td>#{{ s.screen_number }}</td>
+          <td>{{ s.show_date }}</td>
+          <td><span class="bdg bdg-yellow">{{ s.start_time }}</span></td>
+          <td class="fw-bold text-danger">₹{{ s.price_per_ticket|int if s.price_per_ticket else '—' }}</td>
+          <td>
+            {% if s.available_seats %}
+              {% if s.available_seats > 20 %}<span class="bdg bdg-green">{{ s.available_seats }}</span>
+              {% elif s.available_seats > 5 %}<span class="bdg bdg-yellow">{{ s.available_seats }}</span>
+              {% else %}<span class="bdg bdg-red">{{ s.available_seats }}</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <button class="btn-panel btn-panel-outline btn-sm"
+                    onclick="deleteShow('{{ s.show_id }}')">
+              <i class="fas fa-trash text-danger"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center py-5 text-muted">No shows found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if total_pages > 1 %}
+  <div class="d-flex justify-content-between align-items-center p-3 border-top">
+    <span class="small text-muted">Page {{ page }} of {{ total_pages }}</span>
+    <nav><ul class="pagination pagination-sm mb-0">
+      {% if page > 1 %}<li class="page-item"><a class="page-link" href="?page={{ page-1 }}">‹</a></li>{% endif %}
+      {% for p in range([1,page-2]|max, [total_pages+1,page+3]|min) %}
+        <li class="page-item {% if p==page %}active{% endif %}"><a class="page-link" href="?page={{ p }}">{{ p }}</a></li>
+      {% endfor %}
+      {% if page < total_pages %}<li class="page-item"><a class="page-link" href="?page={{ page+1 }}">›</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ADD SHOW MODAL -->
+<div class="modal fade bms-modal" id="addShowModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-calendar-plus me-2"></i>Add New Show</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addShowForm">
+          <!-- Hidden fields for IDs -->
+          <input type="hidden" name="movie_id" id="selectedMovieId">
+          <input type="hidden" name="theater_id" id="selectedTheatreId">
+
+          <!-- Movie Search Autocomplete -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Movie <span class="text-danger">*</span></label>
+            <div class="position-relative">
+              <input type="text" id="movieSearchInput" class="form-control" placeholder="Type movie name to search..." autocomplete="off">
+              <div id="movieSuggestions" class="autocomplete-dropdown d-none"></div>
+            </div>
+            <div id="selectedMovieInfo" class="d-none mt-2 p-2 rounded" style="background:#f0fdf4;border:1px solid #86efac;">
+              <i class="fas fa-check-circle text-success me-2"></i>
+              <span id="selectedMovieText" class="fw-semibold small"></span>
+              <button type="button" class="btn-close btn-close-sm ms-2" style="font-size:0.6rem" onclick="clearMovieSelection()"></button>
+            </div>
+          </div>
+
+          <!-- Theatre Selection -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Theatre <span class="text-danger">*</span></label>
+            <div class="position-relative">
+              <input type="text" id="theatreSearchInput" class="form-control" placeholder="Type theatre name to search..." autocomplete="off">
+              <div id="theatreSuggestions" class="autocomplete-dropdown d-none"></div>
+            </div>
+            <div id="selectedTheatreInfo" class="d-none mt-2 p-2 rounded" style="background:#eff6ff;border:1px solid #93c5fd;">
+              <i class="fas fa-building text-primary me-2"></i>
+              <span id="selectedTheatreText" class="fw-semibold small"></span>
+              <button type="button" class="btn-close btn-close-sm ms-2" style="font-size:0.6rem" onclick="clearTheatreSelection()"></button>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Show Date <span class="text-danger">*</span></label>
+              <input type="date" name="show_date" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Start Time <span class="text-danger">*</span></label>
+              <input type="time" name="start_time" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Ticket Price (₹)</label>
+              <input type="number" name="price_per_ticket" class="form-control" value="150" min="1">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Available Seats</label>
+              <input type="number" name="available_seats" class="form-control" value="100" min="1">
+            </div>
+          </div>
+          <div id="screenStatusAlert" class="alert alert-info small mt-3 mb-0 py-2">
+            <i class="fas fa-info-circle me-1"></i>
+            Select a theatre to check available screens.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="addShowBtn" class="btn btn-primary fw-semibold" onclick="addShow()">
+          <i class="fas fa-plus me-1"></i>Add Show
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  z-index: 9999;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.autocomplete-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s;
+}
+.autocomplete-item:last-child { border-bottom: none; }
+.autocomplete-item:hover { background: #f8f9fa; }
+.autocomplete-item .item-title { font-weight: 600; font-size: .9rem; }
+.autocomplete-item .item-sub { font-size: .78rem; color: #6c757d; }
+.autocomplete-no-results { padding: 12px 14px; color: #6c757d; font-size: .85rem; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let movieSearchTimer = null;
+let theatreSearchTimer = null;
+let allTheatres = [];
+
+// Load all theatres once
+async function loadAllTheatres() {
+  try {
+    const res = await fetch('/admin/api/theatres-list');
+    allTheatres = await res.json();
+  } catch(e) { allTheatres = []; }
+}
+loadAllTheatres();
+
+// ── Movie Autocomplete ──
+document.getElementById('movieSearchInput').addEventListener('input', function() {
+  clearTimeout(movieSearchTimer);
+  const q = this.value.trim();
+  if (q.length < 1) { hideSuggestions('movieSuggestions'); return; }
+  movieSearchTimer = setTimeout(() => searchMovies(q), 200);
+});
+
+async function searchMovies(q) {
+  try {
+    const res = await fetch(`/admin/api/movie-search?q=${encodeURIComponent(q)}`);
+    const movies = await res.json();
+    renderMovieSuggestions(movies);
+  } catch(e) { hideSuggestions('movieSuggestions'); }
+}
+
+function renderMovieSuggestions(movies) {
+  const box = document.getElementById('movieSuggestions');
+  if (!movies.length) {
+    box.innerHTML = '<div class="autocomplete-no-results"><i class="fas fa-search me-2"></i>No movies found</div>';
+    box.classList.remove('d-none');
+    return;
+  }
+  box.innerHTML = movies.map(m => `
+    <div class="autocomplete-item" onclick="selectMovie('${m.movie_id}', '${m.title.replace(/'/g,"\\'")}', '${(m.genre||'').replace(/'/g,"\\'")}', '${(m.language||'').replace(/'/g,"\\'")}')">
+      <div class="item-title"><i class="fas fa-film me-2 text-danger"></i>${m.title}</div>
+      <div class="item-sub">${[m.genre, m.language].filter(Boolean).join(' · ') || 'No details'}</div>
+    </div>
+  `).join('');
+  box.classList.remove('d-none');
+}
+
+function selectMovie(id, title, genre, language) {
+  document.getElementById('selectedMovieId').value = id;
+  document.getElementById('movieSearchInput').value = title;
+  document.getElementById('selectedMovieText').textContent = `${title}${genre ? ' · '+genre : ''}${language ? ' · '+language : ''}`;
+  document.getElementById('selectedMovieInfo').classList.remove('d-none');
+  hideSuggestions('movieSuggestions');
+  // Auto-suggest theatres based on movie
+  autoSuggestTheatreForMovie();
+}
+
+function clearMovieSelection() {
+  document.getElementById('selectedMovieId').value = '';
+  document.getElementById('movieSearchInput').value = '';
+  document.getElementById('selectedMovieInfo').classList.add('d-none');
+}
+
+// ── Theatre Autocomplete ──
+document.getElementById('theatreSearchInput').addEventListener('input', function() {
+  clearTimeout(theatreSearchTimer);
+  const q = this.value.trim().toLowerCase();
+  if (q.length < 1) { hideSuggestions('theatreSuggestions'); return; }
+  theatreSearchTimer = setTimeout(() => filterTheatres(q), 150);
+});
+
+function filterTheatres(q) {
+  const filtered = allTheatres.filter(t =>
+    t.name.toLowerCase().includes(q) || (t.city || '').toLowerCase().includes(q)
+  );
+  renderTheatreSuggestions(filtered);
+}
+
+function renderTheatreSuggestions(theatres) {
+  const box = document.getElementById('theatreSuggestions');
+  if (!theatres.length) {
+    box.innerHTML = '<div class="autocomplete-no-results"><i class="fas fa-search me-2"></i>No theatres found</div>';
+    box.classList.remove('d-none');
+    return;
+  }
+  box.innerHTML = theatres.slice(0, 15).map(t => `
+    <div class="autocomplete-item" onclick="selectTheatre('${t.id}', '${t.name.replace(/'/g,"\\'")}', '${(t.city||'').replace(/'/g,"\\'")}')">
+      <div class="item-title"><i class="fas fa-building me-2 text-primary"></i>${t.name}</div>
+      <div class="item-sub">${t.city || ''}</div>
+    </div>
+  `).join('');
+  box.classList.remove('d-none');
+}
+
+function selectTheatre(id, name, city) {
+  document.getElementById('selectedTheatreId').value = id;
+  document.getElementById('theatreSearchInput').value = name;
+  document.getElementById('selectedTheatreText').textContent = `${name}${city ? ' – '+city : ''}`;
+  document.getElementById('selectedTheatreInfo').classList.remove('d-none');
+  hideSuggestions('theatreSuggestions');
+  checkTheatreScreens(id);
+}
+
+function clearTheatreSelection() {
+  document.getElementById('selectedTheatreId').value = '';
+  document.getElementById('theatreSearchInput').value = '';
+  document.getElementById('selectedTheatreInfo').classList.add('d-none');
+}
+
+// Auto-suggest: when movie is selected, show all theatres as suggestions
+function autoSuggestTheatreForMovie() {
+  const theatreInput = document.getElementById('theatreSearchInput');
+  if (!theatreInput.value.trim() && allTheatres.length > 0) {
+    renderTheatreSuggestions(allTheatres);
+    theatreInput.focus();
+  }
+}
+
+function hideSuggestions(id) {
+  document.getElementById(id).classList.add('d-none');
+}
+
+// Hide dropdowns on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#movieSearchInput') && !e.target.closest('#movieSuggestions'))
+    hideSuggestions('movieSuggestions');
+  if (!e.target.closest('#theatreSearchInput') && !e.target.closest('#theatreSuggestions'))
+    hideSuggestions('theatreSuggestions');
+});
+
+// Reset modal state when opened
+document.getElementById('addShowModal').addEventListener('show.bs.modal', function() {
+  document.getElementById('selectedMovieId').value = '';
+  document.getElementById('selectedTheatreId').value = '';
+  document.getElementById('movieSearchInput').value = '';
+  document.getElementById('theatreSearchInput').value = '';
+  document.getElementById('selectedMovieInfo').classList.add('d-none');
+  document.getElementById('selectedTheatreInfo').classList.add('d-none');
+  hideSuggestions('movieSuggestions');
+  hideSuggestions('theatreSuggestions');
+});
+
+async function checkTheatreScreens(theatreId) {
+  const alertBox = document.getElementById('screenStatusAlert');
+  try {
+    const res   = await fetch(`/admin/api/screens-by-theatre/${theatreId}`);
+    const data  = await res.json();
+    if (data.length === 0) {
+      alertBox.className = 'alert alert-warning small mt-3 mb-0 py-2';
+      alertBox.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>
+        <strong>No screens found</strong> for this theatre.
+        <a href="/admin/screens" class="alert-link fw-bold" target="_blank">Click here to add screens first</a>, then come back to add shows.`;
+    } else {
+      const nums = data.map(s => `#${s.number} (${s.seats} seats)`).join(', ');
+      alertBox.className = 'alert alert-success small mt-3 mb-0 py-2';
+      alertBox.innerHTML = `<i class="fas fa-check-circle me-1"></i>
+        <strong>${data.length} screen(s) available:</strong> ${nums}. Show will use the first screen.`;
+    }
+  } catch(e) {
+    alertBox.className = 'alert alert-info small mt-3 mb-0 py-2';
+    alertBox.innerHTML = '<i class="fas fa-info-circle me-1"></i>Could not load screen info.';
+  }
+}
+
+async function addShow() {
+  const movieId   = document.getElementById('selectedMovieId').value;
+  const theatreId = document.getElementById('selectedTheatreId').value;
+  if (!movieId)   { window.toast('Please select a movie.', 'danger'); return; }
+  if (!theatreId) { window.toast('Please select a theatre.', 'danger'); return; }
+
+  const form = document.getElementById('addShowForm');
+  const btn  = document.getElementById('addShowBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding…';
+
+  const payload = { movie_id: movieId, theater_id: theatreId };
+  new FormData(form).forEach((v,k) => { if (k !== 'movie_id' && k !== 'theater_id') payload[k] = v; });
+
+  try {
+    const res = await fetch('/admin/shows/add', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) { form.reset(); setTimeout(() => location.reload(), 1500); }
+  } catch { window.toast('Network error', 'danger'); }
+  btn.disabled = false; btn.innerHTML = orig;
+}
+
+async function deleteShow(id) {
+  if (!confirm('Delete this show? This cannot be undone.')) return;
+  try {
+    const res = await fetch(`/admin/shows/delete/${id}`, {method:'POST',headers:{'Content-Type':'application/json'}});
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) setTimeout(() => location.reload(), 1200);
+  } catch { window.toast('Network error', 'danger'); }
+}
+</script>
+{% endblock %}

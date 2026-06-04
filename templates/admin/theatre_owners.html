@@ -1,0 +1,557 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Theatre Owners – Admin{% endblock %}
+{% block page_title %}Theatre Owners{% endblock %}
+{% block content %}
+
+<div class="ph">
+  <div>
+    <h4>Theatre Owners</h4>
+    <p>{{ owners|length }} owner(s) · Assign entire cinema brands in one click</p>
+  </div>
+  <button class="btn btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#addOwnerModal">
+    <i class="fas fa-user-plus me-2"></i>Add Theatre Owner
+  </button>
+</div>
+
+{% if owners %}
+<div class="row g-3">
+  {% for o in owners %}
+  <div class="col-md-6 col-lg-4">
+    <div class="owner-card" id="ownerCard_{{ o.id }}">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="owner-avatar">{{ o.name[0].upper() }}</div>
+        <div>
+          <div class="fw-bold">{{ o.name }}</div>
+          <div class="text-muted small">{{ o.email }}</div>
+          <span class="bdg {% if o.is_active %}bdg-green{% else %}bdg-gray{% endif %} mt-1 d-inline-block">
+            {{ 'Active' if o.is_active else 'Inactive' }}
+          </span>
+        </div>
+      </div>
+      <div class="mb-3">
+        <div class="d-flex gap-2 text-muted small mb-1">
+          <i class="fas fa-phone text-primary"></i><span>{{ o.phone or '—' }}</span>
+        </div>
+        <div class="d-flex gap-2 text-muted small">
+          <i class="fas fa-map-marker-alt text-primary"></i><span>{{ o.city or '—' }}</span>
+        </div>
+      </div>
+
+      <!-- Assigned Brands Section -->
+      <div class="mb-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="small fw-semibold text-muted"><i class="fas fa-building me-1"></i>Assigned Brands</span>
+          <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.75rem"
+                  onclick="openAssignModal({{ o.id }}, '{{ o.name|replace("'", "\\'") }}')">
+            <i class="fas fa-layer-group me-1"></i>Assign Brand
+          </button>
+        </div>
+        <div id="brandList_{{ o.id }}" class="owner-theatres-list">
+          <div class="text-muted small fst-italic">
+            <span class="spinner-border spinner-border-sm me-1"></span>Loading...
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm {% if o.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %} flex-fill"
+                onclick="toggleOwner({{ o.id }})">
+          <i class="fas {% if o.is_active %}fa-ban{% else %}fa-check{% endif %} me-1"></i>
+          {{ 'Deactivate' if o.is_active else 'Activate' }}
+        </button>
+        <button class="btn btn-sm btn-outline-danger" title="Delete owner"
+                onclick="confirmDeleteOwner({{ o.id }}, '{{ o.name|replace("'", "\\'") }}')">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <i class="fas fa-user-tie"></i>
+  <h5>No Theatre Owners Yet</h5>
+  <p>Create theatre owners and assign cinema brands to them.</p>
+  <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#addOwnerModal">
+    <i class="fas fa-plus me-2"></i>Add First Owner
+  </button>
+</div>
+{% endif %}
+
+
+<!-- ════════════════════════════════════
+     ADD OWNER MODAL
+════════════════════════════════════ -->
+<div class="modal fade bms-modal" id="addOwnerModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Add Theatre Owner</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="emailStatusBox" class="d-none mb-3">
+          <div id="emailSentBox" class="alert alert-success d-none py-2">
+            <i class="fas fa-envelope-circle-check me-2"></i>
+            <strong>Credentials emailed successfully</strong> to the owner's email address.
+          </div>
+          <div id="emailFailBox" class="alert alert-warning d-none py-2">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Owner created but email failed.</strong> <span id="emailFailReason"></span>
+            <br><small>Please share credentials manually or configure email in <code>.env</code>.</small>
+          </div>
+        </div>
+        <form id="addOwnerForm">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" required placeholder="Theatre Owner Name">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+            <input type="email" name="email" class="form-control" required placeholder="owner@example.com">
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Phone</label>
+              <input type="tel" name="phone" class="form-control" placeholder="9876543210">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">City</label>
+              <input type="text" name="city" class="form-control" placeholder="Mumbai">
+            </div>
+          </div>
+          <div class="alert alert-info small py-2 mt-3 mb-0">
+            <i class="fas fa-envelope me-1"></i>
+            A secure password is auto-generated and <strong>sent to the owner's email address</strong>.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="addOwnerBtn" class="btn btn-primary fw-semibold" onclick="submitAddOwner()">
+          <i class="fas fa-user-plus me-1"></i>Create Owner &amp; Send Email
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     ASSIGN BRAND MODAL
+════════════════════════════════════ -->
+<div class="modal fade bms-modal" id="assignBrandModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" style="background:#0d1321;border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden;">
+
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#1a0828,#0d1321);padding:22px 24px 18px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <h5 style="color:#fff;font-weight:900;font-size:1.05rem;margin:0 0 3px;">
+            <i class="fas fa-layer-group me-2" style="color:#e5383b;"></i>Assign Cinema Brand
+          </h5>
+          <p style="color:rgba(255,255,255,.45);font-size:.8rem;margin:0;">
+            Assigning to: <strong style="color:#fff;" id="assignBrandOwnerName">—</strong>
+          </p>
+        </div>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- Owner email badge -->
+      <div style="padding:14px 24px 0;">
+        <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:10px 15px;display:flex;align-items:center;gap:10px;">
+          <i class="fas fa-user-tie" style="color:#93c5fd;"></i>
+          <div style="font-size:.82rem;color:rgba(255,255,255,.7);">
+            All theatres of the selected brand will be assigned to this owner. Previously assigned brands are shown in green.
+          </div>
+        </div>
+      </div>
+
+      <!-- Search bar -->
+      <div style="padding:14px 24px 8px;">
+        <div style="position:relative;">
+          <i class="fas fa-search" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.35);font-size:.85rem;"></i>
+          <input type="text" id="brandSearchInput" placeholder="Search brand..." autocomplete="off"
+            style="width:100%;background:#1a2236;border:1.5px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;padding:10px 14px 10px 36px;font-size:.88rem;outline:none;"
+            oninput="filterBrands(this.value)"
+            onfocus="this.style.borderColor='#e5383b'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+        </div>
+      </div>
+
+      <!-- Brand picker list -->
+      <div id="brandPickerList" style="padding:0 24px;max-height:420px;overflow-y:auto;scrollbar-width:thin;">
+        <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);">
+          <span class="spinner-border spinner-border-sm me-2"></span>Loading cinema brands...
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:16px 24px;border-top:1px solid rgba(255,255,255,.07);display:flex;justify-content:flex-end;">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     DELETE CONFIRMATION MODAL
+════════════════════════════════════ -->
+<div class="modal fade bms-modal" id="deleteOwnerModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header" style="background:linear-gradient(135deg,#b91c1c,#e5383b)">
+        <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Delete Owner</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <div style="width:60px;height:60px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+          <i class="fas fa-trash-alt text-danger" style="font-size:1.5rem"></i>
+        </div>
+        <p class="fw-bold mb-1">Delete <span id="deleteOwnerName" class="text-danger"></span>?</p>
+        <p class="text-muted small mb-0">This is permanent and cannot be undone.</p>
+      </div>
+      <div class="modal-footer justify-content-center gap-2 border-0 pb-4">
+        <button class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+        <button id="confirmDeleteBtn" class="btn btn-danger px-4 fw-semibold" onclick="executeDelete()">
+          <i class="fas fa-trash-alt me-1"></i>Yes, Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     STYLES
+════════════════════════════════════ -->
+<style>
+.brand-card {
+  background: rgba(255,255,255,.03);
+  border: 1.5px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all .2s;
+}
+.brand-card:hover { border-color: rgba(229,56,59,.35); background: rgba(229,56,59,.05); }
+.brand-card.assigned { background: rgba(34,197,94,.06); border-color: rgba(34,197,94,.3); }
+.brand-icon {
+  width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; font-weight: 900; color: #fff;
+}
+.brand-name { font-size: .95rem; font-weight: 800; color: #fff; margin-bottom: 3px; }
+.brand-meta { font-size: .72rem; color: rgba(255,255,255,.45); }
+.brand-cities { font-size: .68rem; color: rgba(255,255,255,.35); margin-top: 2px; }
+
+/* Owner card brand pills */
+.brand-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(229,56,59,.1); border: 1px solid rgba(229,56,59,.25);
+  color: #e5383b; font-size: .72rem; font-weight: 700;
+  padding: 3px 9px 3px 7px; border-radius: 20px; margin: 2px;
+}
+.brand-pill .pill-remove {
+  background: none; border: none; color: rgba(229,56,59,.6);
+  cursor: pointer; padding: 0; font-size: .65rem; line-height: 1;
+}
+.brand-pill .pill-remove:hover { color: #e5383b; }
+#brandSearchInput::placeholder { color: rgba(255,255,255,.25); }
+</style>
+
+
+<!-- ════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════ -->
+{% endblock %}
+{% block extra_js %}
+<script>
+let _deleteOwnerId = null;
+let _allBrands = [];          // [{brand, count, sample_cities}]
+let _currentOwnerId = null;
+let _ownerAssignedBrands = {}; // ownerId -> Set of assigned brand names
+
+const BRAND_COLORS = {
+  'PVR':      '#7c3aed',
+  'Carnival': '#0891b2',
+  'Cinepolis':'#b45309',
+  'Wave':     '#0f766e',
+  'INOX':     '#dc2626',
+  'Miraj':    '#1d4ed8',
+};
+function brandColor(name) {
+  for (const [k, v] of Object.entries(BRAND_COLORS)) {
+    if (name.startsWith(k)) return v;
+  }
+  return '#374151';
+}
+
+// ── Load brand summary for each owner card ──
+{% for o in owners %}
+loadOwnerBrands({{ o.id }});
+{% endfor %}
+
+async function loadOwnerBrands(ownerId) {
+  const container = document.getElementById(`brandList_${ownerId}`);
+  if (!container) return;
+  try {
+    const res = await fetch(`/admin/api/owner-theatres/${ownerId}`);
+    const theatres = await res.json();
+    if (!theatres.length) {
+      container.innerHTML = '<div class="text-muted small fst-italic">No brands assigned yet</div>';
+      _ownerAssignedBrands[ownerId] = new Set();
+      return;
+    }
+    // Group by brand (first 2 words)
+    const brands = {};
+    theatres.forEach(t => {
+      const parts = (t.name || '').split(' ');
+      const brand = parts.slice(0, 2).join(' ');
+      brands[brand] = (brands[brand] || 0) + 1;
+    });
+    _ownerAssignedBrands[ownerId] = new Set(Object.keys(brands));
+    container.innerHTML = Object.entries(brands).map(([brand, cnt]) =>
+      `<span class="brand-pill">
+        <i class="fas fa-building" style="font-size:.6rem;"></i>${brand} (${cnt})
+        <button class="pill-remove" onclick="removeBrand(${ownerId},'${brand.replace(/'/g,"\\'")}',this)" title="Remove brand"><i class="fas fa-times"></i></button>
+      </span>`
+    ).join('');
+  } catch(e) {
+    container.innerHTML = '<div class="text-danger small">Error loading</div>';
+  }
+}
+
+// ── Open Assign Brand Modal ──
+async function openAssignModal(ownerId, ownerName) {
+  _currentOwnerId = ownerId;
+  document.getElementById('assignBrandOwnerName').textContent = ownerName;
+  document.getElementById('brandSearchInput').value = '';
+
+  // Show modal
+  new bootstrap.Modal(document.getElementById('assignBrandModal')).show();
+
+  // Load all brands if not cached
+  if (!_allBrands.length) {
+    try {
+      const res = await fetch('/admin/api/theatre-brands');
+      _allBrands = await res.json();
+    } catch { _allBrands = []; }
+  }
+
+  renderBrandPicker(_allBrands);
+}
+
+function filterBrands(q) {
+  const filtered = q ? _allBrands.filter(b => b.brand.toLowerCase().includes(q.toLowerCase())) : _allBrands;
+  renderBrandPicker(filtered);
+}
+
+function renderBrandPicker(brands) {
+  const container = document.getElementById('brandPickerList');
+  const assignedSet = _ownerAssignedBrands[_currentOwnerId] || new Set();
+
+  if (!brands.length) {
+    container.innerHTML = '<div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);">No brands found</div>';
+    return;
+  }
+
+  container.innerHTML = brands.map(b => {
+    const isAssigned = assignedSet.has(b.brand);
+    const color = brandColor(b.brand);
+    const initial = b.brand[0].toUpperCase();
+    const citiesHtml = b.sample_cities.length
+      ? `<div class="brand-cities"><i class="fas fa-map-marker-alt me-1"></i>${b.sample_cities.join(' · ')}${b.sample_cities.length < 4 ? '' : ' …'}</div>`
+      : '';
+    return `
+      <div class="brand-card ${isAssigned ? 'assigned' : ''}" id="brandCard_${b.brand.replace(/\s/g,'_')}">
+        <div style="display:flex;align-items:center;gap:13px;flex:1;min-width:0;">
+          <div class="brand-icon" style="background:${color};">${initial}</div>
+          <div style="min-width:0;">
+            <div class="brand-name">${b.brand}</div>
+            <div class="brand-meta"><i class="fas fa-building me-1" style="color:${color};"></i>${b.count.toLocaleString()} theatres across India</div>
+            ${citiesHtml}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+          ${isAssigned
+            ? `<span style="background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:#4ade80;font-size:.7rem;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap;"><i class="fas fa-check me-1"></i>Assigned</span>
+               <button onclick="removeBrandFromModal('${b.brand.replace(/'/g,"\\'")}',this)" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;font-size:.72rem;font-weight:700;padding:5px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:all .15s;" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
+                 <i class="fas fa-times me-1"></i>Remove
+               </button>`
+            : `<button onclick="assignBrand('${b.brand.replace(/'/g,"\\'")}',this)" style="background:linear-gradient(135deg,#e5383b,#c00);border:none;color:#fff;font-size:.8rem;font-weight:800;padding:8px 16px;border-radius:9px;cursor:pointer;white-space:nowrap;box-shadow:0 3px 12px rgba(229,56,59,.35);transition:all .2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
+                 <i class="fas fa-plus me-1"></i>Assign All
+               </button>`
+          }
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function assignBrand(brand, btn) {
+  const ownerId = _currentOwnerId;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Assigning…';
+  try {
+    const res = await fetch(`/admin/theatre-owners/${ownerId}/assign-brand`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ brand })
+    });
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) {
+      if (!_ownerAssignedBrands[ownerId]) _ownerAssignedBrands[ownerId] = new Set();
+      _ownerAssignedBrands[ownerId].add(brand);
+      renderBrandPicker(_allBrands);
+      loadOwnerBrands(ownerId);
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-plus me-1"></i>Assign All';
+    }
+  } catch {
+    window.toast('Network error', 'danger');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plus me-1"></i>Assign All';
+  }
+}
+
+async function removeBrandFromModal(brand, btn) {
+  const ownerId = _currentOwnerId;
+  if (!confirm(`Remove all "${brand}" theatres from this owner?`)) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+  try {
+    const res = await fetch(`/admin/theatre-owners/${ownerId}/unassign-brand`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ brand })
+    });
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) {
+      if (_ownerAssignedBrands[ownerId]) _ownerAssignedBrands[ownerId].delete(brand);
+      renderBrandPicker(_allBrands);
+      loadOwnerBrands(ownerId);
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-times me-1"></i>Remove';
+    }
+  } catch {
+    window.toast('Network error', 'danger');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-times me-1"></i>Remove';
+  }
+}
+
+// Remove brand from owner card pill
+async function removeBrand(ownerId, brand, btn) {
+  if (!confirm(`Remove all "${brand}" theatres from this owner?`)) return;
+  try {
+    const res = await fetch(`/admin/theatre-owners/${ownerId}/unassign-brand`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ brand })
+    });
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) {
+      if (_ownerAssignedBrands[ownerId]) _ownerAssignedBrands[ownerId].delete(brand);
+      loadOwnerBrands(ownerId);
+    }
+  } catch { window.toast('Network error', 'danger'); }
+}
+
+// ── Toggle Owner Active ──
+async function toggleOwner(ownerId) {
+  try {
+    const res = await fetch(`/admin/theatre-owners/${ownerId}/deactivate`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}
+    });
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) setTimeout(() => location.reload(), 900);
+  } catch { window.toast('Network error', 'danger'); }
+}
+
+// ── Delete Owner ──
+function confirmDeleteOwner(id, name) {
+  _deleteOwnerId = id;
+  document.getElementById('deleteOwnerName').textContent = name;
+  new bootstrap.Modal(document.getElementById('deleteOwnerModal')).show();
+}
+async function executeDelete() {
+  if (!_deleteOwnerId) return;
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Deleting…';
+  try {
+    const res = await fetch(`/admin/theatre-owners/${_deleteOwnerId}/delete`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}
+    });
+    const d = await res.json();
+    if (d.success) {
+      window.toast(d.message, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('deleteOwnerModal')).hide();
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      window.toast(d.message || 'Delete failed.', 'danger');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Yes, Delete';
+    }
+  } catch {
+    window.toast('Network error.', 'danger');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Yes, Delete';
+  }
+}
+
+// ── Add Owner ──
+async function submitAddOwner() {
+  const form = document.getElementById('addOwnerForm');
+  const payload = {
+    name:  form.querySelector('[name="name"]').value.trim(),
+    email: form.querySelector('[name="email"]').value.trim(),
+    phone: form.querySelector('[name="phone"]').value.trim(),
+    city:  form.querySelector('[name="city"]').value.trim()
+  };
+  if (!payload.name || !payload.email) { window.toast('Name and email are required.','danger'); return; }
+
+  const btn = document.getElementById('addOwnerBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating…';
+
+  try {
+    const res = await fetch('/admin/theatre-owners/create', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await res.json();
+    if (d.success) {
+      window.toast('Theatre owner created!', 'success');
+      document.getElementById('emailStatusBox').classList.remove('d-none');
+      if (d.email_sent) {
+        document.getElementById('emailSentBox').classList.remove('d-none');
+        document.getElementById('emailFailBox').classList.add('d-none');
+      } else {
+        document.getElementById('emailFailBox').classList.remove('d-none');
+        document.getElementById('emailSentBox').classList.add('d-none');
+        document.getElementById('emailFailReason').textContent = d.email_status || '';
+      }
+      btn.innerHTML = '<i class="fas fa-check me-1"></i>Created!';
+      setTimeout(() => location.reload(), 2500);
+    } else {
+      window.toast(d.message || 'Failed to create owner.', 'danger');
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    }
+  } catch {
+    window.toast('Network error.', 'danger');
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Movies – Admin{% endblock %}
+{% block page_title %}Movies{% endblock %}
+{% block content %}
+
+<div class="ph">
+  <div>
+    <h4>Movies</h4>
+    <p>{{ total }} movies in the system</p>
+  </div>
+  <button class="btn btn-primary fw-semibold" data-bs-toggle="modal" data-bs-target="#addMovieModal">
+    <i class="fas fa-plus me-2"></i>Add Movie
+  </button>
+</div>
+
+<div class="pcard">
+  <div class="pcard-head">
+    <span>Movie Catalog</span>
+    <input type="text" class="form-control form-control-sm tbl-search" style="width:220px"
+           placeholder="Search movies… (press Enter)" value="{{ search }}">
+  </div>
+  <div style="overflow-x:auto">
+    <table class="ptable">
+      <thead>
+        <tr><th>Title</th><th>Genre</th><th>Language</th><th>Duration</th><th>Rating</th><th>Release Date</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for m in movies %}
+        <tr>
+          <td class="fw-semibold">{{ m.title }}</td>
+          <td>{% if m.genre %}<span class="bdg bdg-yellow">{{ m.genre }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td>{{ m.language or '—' }}</td>
+          <td>{{ m.duration }}m</td>
+          <td><span class="text-warning fw-bold">★ {{ "%.1f"|format(m.rating) if m.rating else '—' }}</span></td>
+          <td>{{ m.release_date or '—' }}</td>
+          <td>
+            <button class="btn-panel btn-panel-outline btn-sm"
+                    onclick="deleteRecord('movie','{{ m.movie_id }}')">
+              <i class="fas fa-trash text-danger"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center py-5 text-muted">No movies found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if total_pages > 1 %}
+  <div class="d-flex justify-content-between align-items-center p-3 border-top">
+    <span class="small text-muted">Page {{ page }} of {{ total_pages }}</span>
+    <nav><ul class="pagination pagination-sm mb-0">
+      {% if page > 1 %}<li class="page-item"><a class="page-link" href="?page={{ page-1 }}&search={{ search }}">‹</a></li>{% endif %}
+      {% for p in range([1,page-2]|max, [total_pages+1,page+3]|min) %}
+        <li class="page-item {% if p==page %}active{% endif %}"><a class="page-link" href="?page={{ p }}&search={{ search }}">{{ p }}</a></li>
+      {% endfor %}
+      {% if page < total_pages %}<li class="page-item"><a class="page-link" href="?page={{ page+1 }}&search={{ search }}">›</a></li>{% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ADD MOVIE MODAL -->
+<div class="modal fade bms-modal" id="addMovieModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-film me-2"></i>Add New Movie</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addMovieForm">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-semibold">Movie Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" class="form-control" required placeholder="e.g. Pushpa 2">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Genre</label>
+              <select name="genre" class="form-select">
+                <option value="">Select Genre</option>
+                <option>Action</option><option>Comedy</option><option>Drama</option>
+                <option>Romance</option><option>Thriller</option><option>Horror</option>
+                <option>Science Fiction</option><option>Animation</option><option>Documentary</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Language</label>
+              <select name="language" class="form-select">
+                <option value="">Select Language</option>
+                <option>Hindi</option><option>English</option><option>Telugu</option>
+                <option>Tamil</option><option>Malayalam</option><option>Kannada</option>
+                <option>Bengali</option><option>Marathi</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Duration (minutes)</label>
+              <input type="number" name="duration" class="form-control" placeholder="150" min="1" max="300">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Rating (0–10)</label>
+              <input type="number" name="rating" class="form-control" placeholder="7.5" min="0" max="10" step="0.1">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Release Date</label>
+              <input type="date" name="release_date" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold">Description</label>
+              <textarea name="description" class="form-control" rows="3" placeholder="Brief synopsis of the movie…"></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="addMovieBtn" class="btn btn-primary fw-semibold" onclick="addMovie()">
+          <i class="fas fa-plus me-1"></i>Add Movie
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function addMovie() {
+  const form = document.getElementById('addMovieForm');
+  const btn  = document.getElementById('addMovieBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Adding…';
+  const payload = {};
+  new FormData(form).forEach((v,k) => payload[k] = v);
+  try {
+    const res = await fetch('/admin/movies/add', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) { form.reset(); setTimeout(() => location.reload(), 1500); }
+  } catch { window.toast('Network error', 'danger'); }
+  btn.disabled = false; btn.innerHTML = orig;
+}
+
+async function deleteRecord(type, id) {
+  if (!confirm(`Delete this ${type}? This cannot be undone.`)) return;
+  const url = type === 'movie' ? `/admin/movies/delete/${id}` :
+              type === 'theatre' ? `/admin/theatres/delete/${id}` :
+              `/admin/shows/delete/${id}`;
+  try {
+    const res = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'}});
+    const d = await res.json();
+    window.toast(d.message, d.success ? 'success' : 'danger');
+    if (d.success) setTimeout(() => location.reload(), 1200);
+  } catch { window.toast('Network error', 'danger'); }
+}
+</script>
+{% endblock %}

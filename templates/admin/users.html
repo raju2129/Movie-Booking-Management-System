@@ -1,0 +1,36 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Users – Admin{% endblock %}
+{% block page_title %}App Users{% endblock %}
+{% block content %}
+<div class="ph"><div><h4>App Users</h4><p>{{ users|length }} registered users</p></div></div>
+<div class="pcard">
+  <div class="pcard-head"><span>All Users</span></div>
+  <div style="overflow-x:auto">
+    <table class="ptable">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Phone</th><th>City</th><th>Status</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td><div class="d-flex align-items-center gap-2">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0">{{ u.name[0].upper() }}</div>
+            <span class="fw-semibold">{{ u.name }}</span>
+          </div></td>
+          <td class="text-muted small">{{ u.email }}</td>
+          <td>
+            {% if u.role_name == 'admin' %}<span class="bdg bdg-red">Admin</span>
+            {% elif u.role_name == 'theatre_owner' %}<span class="bdg bdg-purple">Theatre Owner</span>
+            {% else %}<span class="bdg bdg-blue">User</span>{% endif %}
+          </td>
+          <td>{{ u.phone or '—' }}</td>
+          <td>{{ u.city or '—' }}</td>
+          <td><span class="bdg {% if u.is_active %}bdg-green{% else %}bdg-gray{% endif %}">{{ 'Active' if u.is_active else 'Inactive' }}</span></td>
+          <td class="small text-muted">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center py-5 text-muted">No users found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
