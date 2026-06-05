@@ -8,8 +8,8 @@ class Config:
     SECRET_KEY                     = os.environ.get("SECRET_KEY", "bookmyshow-secret-key-2024")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO                = False
-    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
-    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    MAIL_USERNAME = os.environ.get("raju2129babi2gmail.com")
+    MAIL_PASSWORD = os.environ.get("byxxbtftkrydlcpg")
 
 
 class DevelopmentConfig(Config):
